@@ -1,84 +1,37 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../utils/api';
+import CorrectedInstanceCreation from '../components/CorrectedInstanceCreation';
 
 function InstancesPage() {
   const queryClient = useQueryClient();
   const [selectedApiKey, setSelectedApiKey] = useState(localStorage.getItem('selectedApiKey') || '');
   const [showAddForm, setShowAddForm] = useState(false);
-  const [formState, setFormState] = useState({
-    name: '',
-    api_key: '',
-    symbol: '',
-    strategy_buy: '',
-    strategy_sell: '',
-    status: 1
-  });
-  const [symbolSuggestions, setSymbolSuggestions] = useState([]);
-  const [symbolSearchTimeout, setSymbolSearchTimeout] = useState(null);
-  const [isSearchingSymbols, setIsSearchingSymbols] = useState(false);
-  const [strategySuggestionsBuy, setStrategySuggestionsBuy] = useState([]);
-  const [strategySuggestionsSell, setStrategySuggestionsSell] = useState([]);
-  const [strategySearchTimeout, setStrategySearchTimeout] = useState(null);
-  const [isSearchingStrategies, setIsSearchingStrategies] = useState(false);
   const [loadingStatusChange, setLoadingStatusChange] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
-
   const [instanceToDelete, setInstanceToDelete] = useState(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [loadingDelete, setLoadingDelete] = useState(false);
-  const [loadingSave, setLoadingSave] = useState(false);
-
-  const handleStrategySearch = (value, side) => {
-    if (strategySearchTimeout) clearTimeout(strategySearchTimeout);
-  
-    setIsSearchingStrategies(true);
-  
-    const timeout = setTimeout(async () => {
-      if (!value || !formState.api_key) {
-        if (side === 'buy') setStrategySuggestionsBuy([]);
-        if (side === 'sell') setStrategySuggestionsSell([]);
-        setIsSearchingStrategies(false);
-        return;
-      }
-  
-      try {
-        const res = await apiFetch(`/search_strategies?query=${value}`);
-        const data = await res.json();
-        const filtered = (data.strategies || []).filter(s => s.side === side);
-  
-        if (side === 'buy') setStrategySuggestionsBuy(filtered);
-        if (side === 'sell') setStrategySuggestionsSell(filtered);
-      } catch (err) {
-        if (side === 'buy') setStrategySuggestionsBuy([]);
-        if (side === 'sell') setStrategySuggestionsSell([]);
-      } finally {
-        setIsSearchingStrategies(false);
-      }
-    }, 300);
-  
-    setStrategySearchTimeout(timeout);
-  };
 
   const handleInstanceStatusChange = async (instance, action) => {
     if (
       (action === 'start' && instance.status !== 1) ||
       (action === 'stop' && instance.status !== 2)
     ) return;
-  
+
     setLoadingStatusChange(true);
     setStatusMessage(action === 'start' ? 'Iniciando instância...' : 'Parando instância...');
-  
+
     try {
       await apiFetch(`/${action}_instance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ instance_id: instance.id })
       });
-  
+
       setStatusMessage(action === 'start' ? '✅ Instância iniciada com sucesso!' : '🛑 Instância parada com sucesso!');
       await queryClient.invalidateQueries(['instances', selectedApiKey]);
-  
+
       setTimeout(() => {
         setLoadingStatusChange(false);
         setStatusMessage('');
@@ -92,23 +45,22 @@ function InstancesPage() {
       }, 3000);
     }
   };
-  
 
   const handleDeleteInstance = async () => {
     if (!instanceToDelete?.id) return;
-  
+
     try {
       setConfirmDeleteOpen(false);
       setLoadingDelete(true);
-  
+
       const res = await apiFetch('/remove_instance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ instance_id: instanceToDelete.id })
       });
-  
+
       const data = await res.json();
-  
+
       if (res.ok) {
         await queryClient.invalidateQueries(['instances', selectedApiKey]);
       } else {
@@ -122,7 +74,6 @@ function InstancesPage() {
       setInstanceToDelete(null);
     }
   };
-  
 
   const { data: apiKeys = [] } = useQuery({
     queryKey: ['user_apikeys'],
@@ -138,7 +89,6 @@ function InstancesPage() {
       return keys;
     },
   });
-  
 
   const { data: instances = [], isLoading } = useQuery({
     queryKey: ['instances', selectedApiKey],
@@ -148,45 +98,6 @@ function InstancesPage() {
       return data.instances || [];
     },
     enabled: !!selectedApiKey,
-  });
-
-  const mutation = useMutation({
-    mutationFn: async () => {
-      setLoadingSave(true); 
-  
-      const route = formState.id ? '/update_instance' : '/save_instance';
-      const payload = {
-        ...formState,
-        strategies: [formState.strategy_buy, formState.strategy_sell].filter(Boolean),
-      };
-  
-      delete payload.strategy_buy;
-      delete payload.strategy_sell;
-  
-      const res = await apiFetch(route, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-  
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['instances', selectedApiKey]);
-      setShowAddForm(false);
-      setFormState({
-        name: '',
-        api_key: '',
-        symbol: '',
-        strategy_buy: '',
-        strategy_sell: '',
-        status: 1
-      });
-      setLoadingSave(false);  // Finaliza loading com sucesso
-    },
-    onError: () => {
-      setLoadingSave(false);  // Finaliza loading em caso de erro
-    }
   });
 
   const formatDate = (dateString) => {
@@ -201,332 +112,253 @@ function InstancesPage() {
     });
   };
 
-  const handleSymbolSearch = (value) => {
-    setFormState(prev => ({ ...prev, symbol: value }));
-    if (symbolSearchTimeout) clearTimeout(symbolSearchTimeout);
-    setIsSearchingSymbols(true); // Inicia loading
-  
-    const timeout = setTimeout(async () => {
-      if (!value || !formState.api_key) {
-        setSymbolSuggestions([]);
-        setIsSearchingSymbols(false); // Finaliza loading se não houver valor
-        return;
-      }
-  
-      try {
-        const res = await apiFetch(`/search_symbols?query=${value}&api_key_id=${formState.api_key}`);
-        const data = await res.json();
-        setSymbolSuggestions(data.symbols || []);
-      } catch (e) {
-        setSymbolSuggestions([]);
-      } finally {
-        setIsSearchingSymbols(false); // Finaliza loading
-      }
-    }, 300);
-  
-    setSymbolSearchTimeout(timeout);
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      1: { text: 'Parado', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
+      2: { text: 'Executando', color: 'bg-green-500/20 text-green-400 border-green-500/30' },
+      3: { text: 'Pausado', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' }
+    };
+    
+    const config = statusConfig[status] || { text: 'Desconhecido', color: 'bg-gray-500/20 text-gray-400 border-gray-500/30' };
+    
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${config.color}`}>
+        {config.text}
+      </span>
+    );
   };
-  
+
+  const onInstanceCreated = () => {
+    queryClient.invalidateQueries(['instances', selectedApiKey]);
+    setShowAddForm(false);
+  };
 
   return (
     <div className="p-6 text-white">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-semibold">Instâncias</h2>
+      {/* Header */}
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h2 className="text-3xl font-bold text-white mb-2">Trading Instances</h2>
+          <p className="text-gray-400">Manage your automated trading bots</p>
+        </div>
+        
+        {statusMessage && (
+          <div className="bg-gray-800 border border-gray-600 rounded-lg p-4 mb-4">
+            <p className="text-sm">{statusMessage}</p>
+          </div>
+        )}
       </div>
 
-      <div className="flex items-center gap-4 mb-4">
-        <select
-          value={selectedApiKey}
-          onChange={(e) => {
-            setSelectedApiKey(e.target.value);
-            localStorage.setItem('selectedApiKey', e.target.value);
-          }}
-          className="bg-gray-800 text-white p-2 rounded"
-        >
-          <option value="">Selecione a API Key</option>
-          {apiKeys.map(key => (
-            <option key={key.api_key_id} value={key.api_key_id}>
-              ({key.api_key_id}) {key.name}
-            </option>
-          ))}
-        </select>
+      {/* Controls */}
+      <div className="flex items-center gap-4 mb-6">
+        <div className="flex-1">
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Select API Key
+          </label>
+          <select
+            value={selectedApiKey}
+            onChange={(e) => {
+              setSelectedApiKey(e.target.value);
+              localStorage.setItem('selectedApiKey', e.target.value);
+            }}
+            className="bg-gray-800 text-white p-3 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 min-w-64"
+          >
+            <option value="">Select an API Key</option>
+            {apiKeys.map(key => (
+              <option key={key.api_key_id} value={key.api_key_id}>
+                ({key.api_key_id}) {key.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
-        <button onClick={() => setShowAddForm(true)} className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded">
-          Adicionar Instância
-        </button>
+        <div className="flex-shrink-0 mt-7">
+          <button 
+            onClick={() => setShowAddForm(true)} 
+            className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 shadow-lg"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            <span>Create Instance</span>
+          </button>
+        </div>
       </div>
 
-      {showAddForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg">
-            <h3 className="text-xl font-semibold mb-4">{formState.id ? 'Editar Instância' : 'Nova Instância'}</h3>
-            <div className="space-y-4">
-              <input
-                name="name"
-                maxLength={255}
-                value={formState.name}
-                onChange={(e) => setFormState(prev => ({ ...prev, name: e.target.value.trimStart() }))}
-                placeholder="Nome da Instância"
-                className="w-full p-2 rounded bg-gray-700 text-white"
-                required
-              />
-              <select
-                name="api_key"
-                value={formState.api_key}
-                onChange={(e) => setFormState(prev => ({ ...prev, api_key: e.target.value }))}
-                className="w-full p-2 rounded bg-gray-700 text-white"
-              >
-                <option value="">Selecione a API Key</option>
-                {apiKeys.map(key => (
-                  <option key={key.api_key_id} value={key.api_key_id}>
-                    ({key.api_key_id}) {key.name}
-                  </option>
+      {/* Instances List */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
+          <span className="ml-3 text-gray-400">Loading instances...</span>
+        </div>
+      ) : instances.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="w-24 h-24 mx-auto mb-4 text-gray-600">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-400 mb-2">No instances found</h3>
+          <p className="text-gray-500 mb-6">
+            {selectedApiKey ? 'No trading instances for this API key.' : 'Select an API key to view instances.'}
+          </p>
+          {selectedApiKey && (
+            <button 
+              onClick={() => setShowAddForm(true)}
+              className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-2 rounded-lg transition-colors"
+            >
+              Create Your First Instance
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="bg-gray-800 rounded-xl shadow-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-700">
+              <thead className="bg-gray-900">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Instance
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Symbol
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Created
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Last Update
+                  </th>
+                  <th className="px-6 py-4 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-gray-800 divide-y divide-gray-700">
+                {instances.map((instance) => (
+                  <tr key={instance.id} className="hover:bg-gray-750 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10">
+                          <div className="h-10 w-10 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center justify-center">
+                            <span className="text-white font-medium">
+                              {instance.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-white">
+                            {instance.name}
+                          </div>
+                          <div className="text-sm text-gray-400">
+                            ID: {instance.id}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-white">{instance.symbol}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {getStatusBadge(instance.status)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                      {formatDate(instance.created_at)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                      {formatDate(instance.updated_at)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end space-x-2">
+                        {instance.status === 1 && (
+                          <button
+                            onClick={() => handleInstanceStatusChange(instance, 'start')}
+                            disabled={loadingStatusChange}
+                            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-3 py-1 rounded text-sm transition-colors"
+                          >
+                            Start
+                          </button>
+                        )}
+                        {instance.status === 2 && (
+                          <button
+                            onClick={() => handleInstanceStatusChange(instance, 'stop')}
+                            disabled={loadingStatusChange}
+                            className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white px-3 py-1 rounded text-sm transition-colors"
+                          >
+                            Stop
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            setInstanceToDelete(instance);
+                            setConfirmDeleteOpen(true);
+                          }}
+                          className="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1 rounded text-sm transition-colors border border-red-600/30"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 ))}
-              </select>
-              <div className="relative">
-              <input
-                type="text"
-                name="symbol"
-                value={formState.symbol}
-                onChange={(e) => handleSymbolSearch(e.target.value)}
-                placeholder="Buscar símbolo..."
-                autoComplete="off"
-                className="w-full p-2 rounded bg-gray-700 text-white"
-              />
-
-              {isSearchingSymbols && (
-                <div className="absolute right-3 top-2 text-xs text-gray-400 animate-pulse">
-                  Buscando...
-                </div>
-              )}
-
-              {symbolSuggestions.length > 0 && (
-                <ul className="absolute z-10 bg-gray-800 border border-gray-600 mt-1 rounded w-full max-h-40 overflow-y-auto shadow-md">
-                  {symbolSuggestions.map((s, i) => (
-                    <li
-                      key={i}
-                      onClick={() => {
-                        setFormState(prev => ({ ...prev, symbol: s }));
-                        setSymbolSuggestions([]);
-                      }}
-                      className="px-3 py-2 hover:bg-cyan-700 cursor-pointer transition-colors"
-                    >
-                      {s}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <div className="relative">
-            <input
-                type="text"
-                placeholder="Buscar Estratégia de Compra"
-                onChange={(e) => handleStrategySearch(e.target.value, 'buy')}
-                className="w-full p-2 rounded bg-gray-700 text-white"
-              />
-              {strategySuggestionsBuy.length > 0 && (
-                <ul className="absolute z-10 bg-gray-800 border border-gray-600 mt-1 rounded w-full max-h-40 overflow-y-auto shadow-md">
-                  {strategySuggestionsBuy.map((s) => (
-                    <li
-                      key={s.id}
-                      onClick={() => {
-                        setFormState(prev => ({ ...prev, strategy_buy: s.id }));
-                        setStrategySuggestionsBuy([]);
-                      }}
-                      className="px-3 py-2 hover:bg-cyan-700 cursor-pointer transition-colors"
-                    >
-                      {s.name} ({s.id}) - {s.side}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="relative">
-              <input
-              type="text"
-              placeholder="Buscar Estratégia de Venda"
-              onChange={(e) => handleStrategySearch(e.target.value, 'sell')}
-              className="w-full p-2 rounded bg-gray-700 text-white"
-            />
-              {strategySuggestionsSell.length > 0 && (
-                <ul className="absolute z-10 bg-gray-800 border border-gray-600 mt-1 rounded w-full max-h-40 overflow-y-auto shadow-md">
-                  {strategySuggestionsSell.map((s) => (
-                    <li
-                      key={s.id}
-                      onClick={() => {
-                        setFormState(prev => ({ ...prev, strategy_sell: s.id }));
-                        setStrategySuggestionsSell([]);
-                      }}
-                      className="px-3 py-2 hover:bg-cyan-700 cursor-pointer transition-colors"
-                    >
-                      {s.name} ({s.strategy_id}) - {s.side}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-              <div className="flex justify-end gap-4 mt-4">
-                <button
-                  onClick={() => {
-                    setShowAddForm(false);
-                    setFormState({ name: '', api_key: '', symbol: '', strategy: '', status: 1 });
-                  }}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => mutation.mutate()}
-                  disabled={!formState.strategy_buy && !formState.strategy_sell}
-                  className={`px-4 py-2 rounded ${(!formState.strategy_buy && !formState.strategy_sell)
-                    ? 'bg-gray-600 cursor-not-allowed'
-                    : 'bg-green-600 hover:bg-green-700'
-                  }`}
-                >
-                  Salvar
-                </button>
-              </div>
-            </div>
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {isLoading ? (
-        <p>Carregando instâncias...</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full table-auto bg-gray-800 rounded text-sm">
-            <thead>
-              <tr className="bg-gray-700 text-left">
-                <th className="px-4 py-2">ID</th>
-                <th className="px-4 py-2">Nome</th>
-                <th className="px-4 py-2">Símbolo</th>
-                <th className="px-4 py-2">Status</th>
-                <th className="px-4 py-2">Criado em</th>
-                <th className="px-4 py-2">Data Início</th>
-                <th className="px-4 py-2">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {instances.map((instance) => (
-                <tr key={instance.id} className="border-t border-gray-700">
-                  <td className="px-4 py-2 whitespace-nowrap">{instance.id}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">{instance.name}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">{instance.symbol}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">{instance.status === 2 ? 'Running' : 'Stopped'}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">{formatDate(instance.created_at)}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">{formatDate(instance.start_date)}</td>
-                  <td className="px-4 py-2 flex gap-2 items-center">
-                    {/* Configurar */}
-                    <img
-                      src="/icons/config.svg"
-                      alt="Configurar"
-                      title="Configurar"
-                      className="w-5 h-5 cursor-pointer hover:opacity-80"
-                      onClick={() => {
-                        setFormState({
-                          name: instance.name,
-                          api_key: instance.api_key,
-                          symbol: instance.strategies?.buy?.symbol || instance.strategies?.sell?.symbol || '',
-                          strategy: instance.strategies?.buy?.id || instance.strategies?.sell?.id || '',
-                          id: instance.id
-                        });
-                        setShowAddForm(true);
-                      }}
-                    />
+      {/* Corrected Instance Creation Modal */}
+      <CorrectedInstanceCreation
+        showAddForm={showAddForm}
+        setShowAddForm={setShowAddForm}
+        onInstanceCreated={onInstanceCreated}
+      />
 
-                    {/* Iniciar */}
-                    <img
-                      src="/icons/play.svg"
-                      alt="Iniciar"
-                      title="Iniciar"
-                      className={`w-5 h-5 ${instance.status === 1 ? 'cursor-pointer hover:opacity-80' : 'opacity-30'}`}
-                      onClick={() => handleInstanceStatusChange(instance, 'start')}
-                    />
-
-                    <img
-                      src="/icons/pause.svg"
-                      alt="Parar"
-                      title="Parar"
-                      className={`w-5 h-5 ${instance.status === 2 ? 'cursor-pointer hover:opacity-80' : 'opacity-30'}`}
-                      onClick={() => handleInstanceStatusChange(instance, 'stop')}
-                    />
-
-                    {/* Remover */}
-                    <img
-                      src="/icons/trash.svg"
-                      alt="Remover"
-                      title="Remover"
-                      className={`w-5 h-5 ${instance.status === 1 ? 'cursor-pointer hover:opacity-80' : 'opacity-30'}`}
-                      onClick={() => {
-                        if (instance.status !== 1) return;
-                        setInstanceToDelete(instance);
-                        setConfirmDeleteOpen(true);
-                      }}
-                      
-                    />
-                  </td>
-                </tr>
-              ))}
-              {confirmDeleteOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-                  <div className="bg-gray-900 p-6 rounded-lg shadow-md text-center max-w-sm w-full">
-                    <h3 className="text-xl font-semibold text-white mb-4">Confirmar Exclusão</h3>
-                    <p className="text-white mb-2">Tem certeza que deseja deletar a instância:</p>
-                    <p className="text-red-400 font-bold truncate">ID: {instanceToDelete?.id || '--'}</p>
-                    <p className="text-gray-400 text-sm mb-4 italic truncate">
-                      {instanceToDelete?.name || '(sem nome)'}
-                    </p>
-                    <div className="flex justify-center gap-4">
-                      <button
-                        onClick={handleDeleteInstance}
-                        className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-white"
-                      >
-                        Confirmar
-                      </button>
-                      <button
-                        onClick={() => setConfirmDeleteOpen(false)}
-                        className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded text-white"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {loadingDelete && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <p className="text-white text-xl">Excluindo instância...</p>
-                </div>
-              )}
-
-              {loadingSave && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-                  <p className="text-white text-xl">Salvando instância...</p>
-                </div>
-              )}
-
-              {loadingStatusChange && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-                  <div className="bg-gray-900 px-8 py-6 rounded-lg shadow-lg text-white text-xl text-center">
-                    {statusMessage}
-                  </div>
-                </div>
-              )}
-
-            </tbody>
-          </table>
+      {/* Delete Confirmation Modal */}
+      {confirmDeleteOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
+          <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h3 className="text-xl font-semibold mb-4 text-white">Confirm Delete</h3>
+            <p className="text-gray-300 mb-6">
+              Are you sure you want to delete the instance "{instanceToDelete?.name}"? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => {
+                  setConfirmDeleteOpen(false);
+                  setInstanceToDelete(null);
+                }}
+                disabled={loadingDelete}
+                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-700 text-white rounded transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteInstance}
+                disabled={loadingDelete}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white rounded transition-colors flex items-center space-x-2"
+              >
+                {loadingDelete ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Delete</span>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
-
       )}
     </div>
-
-    
   );
-  
 }
 
 export default InstancesPage;
