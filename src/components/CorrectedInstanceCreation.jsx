@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../utils/api';
 import { v4 as uuidv4 } from 'uuid';
@@ -50,7 +50,8 @@ const Icons = {
 function CorrectedInstanceCreation({ 
   showAddForm, 
   setShowAddForm, 
-  onInstanceCreated 
+  onInstanceCreated,
+  strategy
 }) {
   const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState(1);
@@ -62,6 +63,19 @@ function CorrectedInstanceCreation({
     strategy_sell: '',
     status: 1
   });
+
+  useEffect(() => {
+    if (strategy) {
+      setFormState({
+        name: strategy.name || '',
+        api_key: strategy.api_key || '',
+        symbol: strategy.symbol || '',
+        strategy_buy: strategy.strategy_buy || '',
+        strategy_sell: strategy.strategy_sell || '',
+        status: strategy.status || 1
+      });
+    }
+  }, [strategy]);
 
   // API Keys data
   const { data: apiKeys = [] } = useQuery({
@@ -613,7 +627,7 @@ function CorrectedInstanceCreation({
         {/* Header */}
         <div className="p-6 border-b border-gray-700">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-white">Create New Instance</h2>
+            <h2 className="text-2xl font-bold text-white">{strategy ? 'Edit Instance' : 'Create New Instance'}</h2>
             <button
               onClick={resetForm}
               className="text-gray-400 hover:text-white transition-colors"
@@ -698,10 +712,10 @@ function CorrectedInstanceCreation({
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Creating...</span>
+                  <span>{strategy ? 'Saving...' : 'Creating...'}</span>
                 </>
               ) : (
-                <span>Create Instance</span>
+                <span>{strategy ? 'Save Changes' : 'Create Instance'}</span>
               )}
             </button>
           )}

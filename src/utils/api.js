@@ -1,16 +1,22 @@
-// utils/api.js
 export async function apiFetch(url, options = {}) {
+    const defaultHeaders = {
+        'Content-Type': 'application/json',
+    };
+
     const response = await fetch(`/api${url}`, {
-      ...options,
-      credentials: 'include', // importante se estiver usando cookies para sessão
+        ...options,
+        headers: {
+            ...defaultHeaders,
+            ...options.headers,
+        },
+        credentials: 'include',
     });
-  
+
     if (response.status === 401) {
-      // Redireciona para login se o token estiver expirado ou sessão inválida
-      window.location.href = '/login';
-      return;
+        window.location.href = '/login';
+        return;
     }
-  
+
     return response;
-  }
+}
   
