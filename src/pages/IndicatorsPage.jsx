@@ -11,6 +11,9 @@ function IndicatorsPage() {
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [selectedKey, setSelectedKey] = useState('');
   const [revealKey, setRevealKey] = useState(false);
+  const [isLoadingKey, setIsLoadingKey] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false); 
+  
 
   const fetchIndicators = async () => {
     const res = await apiFetch('/select_indicators_by_user');
@@ -62,33 +65,79 @@ function IndicatorsPage() {
   };
 
   const handleViewKey = async (indicatorId) => {
-    try {
-      // opcional: você pode usar um spinner ou placeholder enquanto busca
-      setSelectedKey('••••••••••••••••••••');
+    // 1. Encontra o indicador no estado atual
+    const indicator = indicators.find(ind => ind.id === indicatorId);
+
+    // 2. Verifica se a chave já foi carregada anteriormente
+    if (indicator && indicator.key) {
+      // Se já tiver a chave, apenas mostra o modal, sem carregar
+      setSelectedKey(indicator.key);
       setShowKeyModal(true);
       setRevealKey(false);
-  
+      return; // Encerra a função aqui
+    }
+
+    // 3. Se não tiver a chave, executa o processo de carregamento
+    setShowKeyModal(true);
+    setIsLoadingKey(true);
+    setRevealKey(false);
+    setSelectedKey('');
+
+    try {
       const res = await apiFetch('/select_indicator_key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: indicatorId })
       });
-  
+
       const data = await res.json();
-  
+
       if (res.ok) {
-        setSelectedKey(data.indicator_data.key);
+        const fetchedKey = data.indicator_data.key;
+        setSelectedKey(fetchedKey);
+
+        // 4. ATUALIZAÇÃO CRÍTICA: Salva a chave no estado para uso futuro
+        setIndicators(currentIndicators =>
+          currentIndicators.map(ind =>
+            ind.id === indicatorId ? { ...ind, key: fetchedKey } : ind
+          )
+        );
       } else {
-        console.error('Erro ao buscar a chave:', data.error);
         alert(data.error || 'Erro ao buscar a chave do indicador.');
         setShowKeyModal(false);
       }
     } catch (err) {
-      console.error('Erro de conexão:', err);
       alert('Erro ao conectar com o servidor.');
       setShowKeyModal(false);
+    } finally {
+      setIsLoadingKey(false);
     }
   };
+
+  const handleCopyKey = async () => {
+    // Garante que não tentemos copiar uma chave vazia
+    if (!selectedKey || copySuccess) return;
+
+    // Formata o texto conforme solicitado
+    const textToCopy = `key:${selectedKey},side:`;
+
+    try {
+      // Usa a API do navegador para copiar o texto
+      await navigator.clipboard.writeText(textToCopy);
+      
+      // Ativa o feedback visual de sucesso
+      setCopySuccess(true);
+
+      // Remove o feedback após 2 segundos
+      setTimeout(() => {
+        setCopySuccess(false);
+      }, 2000);
+    } catch (err) {
+      console.error('Falha ao copiar a chave: ', err);
+      alert('Seu navegador não suporta esta função ou a permissão foi negada.');
+    }
+  };
+
 
   return (
     <div className="p-6 text-white">
@@ -179,31 +228,62 @@ function IndicatorsPage() {
       </div>
 
       {showKeyModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-xl max-w-md w-full">
-            <h3 className="text-xl font-semibold mb-4 text-white">Chave do Indicador</h3>
+      <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
+        <div className="bg-gray-800 p-6 rounded-lg shadow-xl max-w-md w-full">
+          <h3 className="text-xl font-semibold mb-4 text-white">Chave do Indicador</h3>
+          
+          {isLoadingKey ? (
+            // ... (código do spinner de carregamento - sem alteração)
+            <div className="flex justify-center items-center h-24">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500"></div>
+              <p className="ml-4 text-gray-300">Carregando a chave...</p>
+            </div>
+          ) : (
             <div className="relative">
               <input
                 type={revealKey ? 'text' : 'password'}
                 readOnly
                 value={selectedKey}
-                className="w-full p-2 rounded bg-gray-700 text-white pr-10"
+                // Aumente o padding da direita para dar espaço aos ícones
+                className="w-full p-2 rounded bg-gray-700 text-white pr-20" 
               />
-              <img
-                src={revealKey ? '/icons/eye-off.svg' : '/icons/eye.svg'}
-                alt="Mostrar/Ocultar"
-                className="absolute top-2 right-2 w-6 h-6 cursor-pointer"
-                onClick={() => setRevealKey(!revealKey)}
-              />
+              {/* Container para os ícones à direita */}
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 space-x-2">
+                
+                {/* Ícone de Copiar / Confirmar */}
+                <img
+                  src={copySuccess ? '/icons/check.svg' : '/icons/copy.svg'}
+                  alt={copySuccess ? 'Copiado!' : 'Copiar'}
+                  title={copySuccess ? 'Copiado com sucesso!' : 'Copiar'}
+                  className={`w-5 h-5 ${copySuccess ? '' : 'cursor-pointer'}`}
+                  onClick={handleCopyKey}
+                />
+
+                {/* Ícone de Mostrar / Ocultar Chave */}
+                <img
+                  src={revealKey ? '/icons/eye-off.svg' : '/icons/eye.svg'}
+                  alt="Mostrar/Ocultar"
+                  title="Mostrar/Ocultar"
+                  className="w-6 h-6 cursor-pointer"
+                  onClick={() => setRevealKey(!revealKey)}
+                />
+              </div>
             </div>
-            <div className="flex justify-end mt-6">
-              <button onClick={() => setShowKeyModal(false)} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-white">
-                Fechar
-              </button>
-            </div>
+          )}
+
+          <div className="flex justify-end mt-6">
+            <button 
+              onClick={() => setShowKeyModal(false)} 
+              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-white"
+              disabled={isLoadingKey} 
+            >
+              Fechar
+            </button>
           </div>
         </div>
-      )}
+      </div>
+    )}
+
     </div>
   );
 }

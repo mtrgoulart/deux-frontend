@@ -15,6 +15,7 @@ function ApiKeysPage() {
   const [keyToDelete, setKeyToDelete] = useState(null);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingKeyId, setEditingKeyId] = useState(null);
+  const tutorialUrl = import.meta.env.VITE_TUTORIAL_URL;
 
   const safePattern = /^[a-zA-Z0-9_-]+$/;
 
@@ -75,7 +76,7 @@ function ApiKeysPage() {
       setEditingKeyId(null);
     },
     onError: () => {
-      alert('Erro ao editar nome da API Key');
+      alert('Error on edit API Key');
     }
   });
 
@@ -99,14 +100,14 @@ function ApiKeysPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['user_apikeys']);
-      setMessage("Chave salva com sucesso.");
+      setMessage("Sucessful saved");
       setFormData({ name: '', exchange_id: '', api_key: '', secret_key: '' });
       setExtraParams([]);
       setShowAddForm(false);
       setLoadingSave(false);
     },
     onError: () => {
-      setMessage("Erro ao salvar credenciais.");
+      setMessage("Error saving credentials.");
       setLoadingSave(false);
     },
   });
@@ -182,14 +183,35 @@ function ApiKeysPage() {
     <div className="p-6 text-white">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold">API Keys</h2>
-        <button onClick={() => setShowAddForm(true)} className="bg-cyan-500 hover:bg-cyan-600 px-4 py-2 rounded">Adicionar API Key</button>
+
+        {/* Agrupador para os botões */}
+        <div className="flex items-center gap-4">
+          
+          {/* Botão de Tutorial (novo) */}
+          <a
+            href={tutorialUrl}
+            target="_blank" // Abre em nova aba
+            rel="noopener noreferrer" // Medida de segurança para links em nova aba
+            className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded font-semibold text-white no-underline"
+          >
+            Tutorial
+          </a>
+
+          {/* Botão de Adicionar API Key (existente) */}
+          <button 
+            onClick={() => setShowAddForm(true)} 
+            className="bg-cyan-500 hover:bg-cyan-600 px-4 py-2 rounded"
+          >
+            Add API Key
+          </button>
+        </div>
       </div>
 
       {showAddForm && (
         <form onSubmit={handleSubmit} className="bg-gray-700 p-4 mb-6 rounded grid grid-cols-2 gap-4">
-          <input name="name" value={formData.name} onChange={handleFormChange} placeholder="Nome" className="p-2 rounded bg-gray-800 text-white" required />
+          <input name="name" value={formData.name} onChange={handleFormChange} placeholder="Name" className="p-2 rounded bg-gray-800 text-white" required />
           <select name="exchange_id" value={formData.exchange_id} onChange={handleFormChange} className="p-2 rounded bg-gray-800 text-white" required>
-            <option value="">Selecione a exchange</option>
+            <option value="">Select exchange</option>
             {exchanges?.map((ex) => (
               <option key={ex.id} value={ex.id}>{ex.name}</option>
             ))}
@@ -198,7 +220,7 @@ function ApiKeysPage() {
           <input name="secret_key" value={formData.secret_key} onChange={handleFormChange} placeholder="Secret Key" className="p-2 rounded bg-gray-800 text-white" required />
 
           <div className="col-span-2">
-            <h3 className="mb-2 text-sm">Parâmetros Adicionais</h3>
+            <h3 className="mb-2 text-sm">Additional Parameters</h3>
             {extraParams.map((param, index) => (
               <div key={index} className="flex gap-2 mb-2">
                 <input type="text" placeholder="Chave" value={param.key} onChange={(e) => handleExtraParamChange(index, 'key', e.target.value)} className="flex-1 p-2 rounded bg-gray-800 text-white" />
@@ -206,27 +228,27 @@ function ApiKeysPage() {
                 <button type="button" onClick={() => removeExtraParam(index)} className="bg-red-500 hover:bg-red-600 px-2 rounded">X</button>
               </div>
             ))}
-            <button type="button" onClick={addExtraParam} className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm">+ Novo Parâmetro</button>
+            <button type="button" onClick={addExtraParam} className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm">+ New Parameter</button>
           </div>
 
           <div className="col-span-2 flex justify-end gap-4">
-            <button type="submit" disabled={mutation.isLoading} className={`px-4 py-2 rounded ${mutation.isLoading ? 'bg-gray-600' : 'bg-green-600 hover:bg-green-700'}`}>{mutation.isLoading ? 'Salvando...' : 'Salvar'}</button>
-            <button type="button" onClick={() => setShowAddForm(false)} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Cancelar</button>
+            <button type="submit" disabled={mutation.isLoading} className={`px-4 py-2 rounded ${mutation.isLoading ? 'bg-gray-600' : 'bg-green-600 hover:bg-green-700'}`}>{mutation.isLoading ? 'Saving...' : 'Save'}</button>
+            <button type="button" onClick={() => setShowAddForm(false)} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Cancel</button>
           </div>
 
           {message && <div className="col-span-2 text-sm text-green-400 mt-2">{message}</div>}
         </form>
       )}
 
-      {loadingApiKeys ? <p>Carregando API Keys...</p> : (
+      {loadingApiKeys ? <p>Loading API Keys...</p> : (
         <div className="overflow-x-auto">
           <table className="min-w-full table-auto bg-gray-800 rounded">
             <thead>
               <tr className="bg-gray-700 text-left">
                 <th className="px-4 py-2">ID</th>
-                <th className="px-4 py-2">Nome</th>
+                <th className="px-4 py-2">Name</th>
                 <th className="px-4 py-2">Exchange</th>
-                <th className="px-4 py-2">Ações</th>
+                <th className="px-4 py-2"></th>
               </tr>
             </thead>
             <tbody>
@@ -279,13 +301,13 @@ function ApiKeysPage() {
           {showEditForm && (
   <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
     <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg">
-      <h3 className="text-xl font-semibold mb-4">Editar Nome da API Key</h3>
+      <h3 className="text-xl font-semibold mb-4">Edit API Key Name</h3>
       <div className="space-y-4">
         <input
           name="name"
           value={formData.name}
           onChange={handleFormChange}
-          placeholder="Nome da API Key"
+          placeholder="API Key name"
           className="w-full p-2 rounded bg-gray-700 text-white"
         />
 
@@ -330,7 +352,7 @@ function ApiKeysPage() {
             }}
             className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded"
           >
-            Salvar
+            Save
           </button>
           <button
             onClick={() => {
@@ -368,7 +390,7 @@ function ApiKeysPage() {
 
       {loadingSave && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-          <p className="text-white text-xl">Salvando credenciais...</p>
+          <p className="text-white text-xl">Saving credentials...</p>
         </div>
       )}
 

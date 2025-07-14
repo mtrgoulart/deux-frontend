@@ -16,28 +16,30 @@ function SidebarLayout() {
           <nav>
             <ul className="space-y-4">
               <li>
-                <Link to="/" className="block py-2 px-4 rounded hover:bg-cyan-600 hover:text-white transition-all duration-200 text-cyan-300">
-                  Instâncias
+                <Link to="/apikeys" className="block py-2 px-4 rounded hover:bg-pink-600 hover:text-white transition-all duration-200 text-pink-300">
+                  1 - API Keys
                 </Link>
               </li>
               <li>
                 <Link to="/strategies" className="block py-2 px-4 rounded hover:bg-purple-600 hover:text-white transition-all duration-200 text-purple-300">
-                  Estratégias
+                  2 - Configuration
                 </Link>
               </li>
+              <li>
+                <Link to="/" className="block py-2 px-4 rounded hover:bg-cyan-600 hover:text-white transition-all duration-200 text-cyan-300">
+                  3 - Strategy
+                </Link>
+              </li>
+              
               <li>
                 <Link to="/indicators" className="block py-2 px-4 rounded hover:bg-green-600 hover:text-white transition-all duration-200 text-green-300">
-                  Indicadores
+                  4 - Indicators
                 </Link>
               </li>
-              <li>
-                <Link to="/apikeys" className="block py-2 px-4 rounded hover:bg-pink-600 hover:text-white transition-all duration-200 text-pink-300">
-                  API Keys
-                </Link>
-              </li>
+              
               <li>
                 <Link to="/signals" className="block py-2 px-4 rounded hover:bg-green-600 hover:text-white transition-all duration-200 text-green-300">
-                  Sinais
+                  Signals
                 </Link>
               </li>
               <li>
