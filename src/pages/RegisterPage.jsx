@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../utils/api';
+import logoImage from '../assets/logo.png';
 
 function RegisterPage() {
   const [username, setUsername] = useState('');
@@ -16,7 +17,7 @@ function RegisterPage() {
     setSuccess('');
 
     if (password !== confirm) {
-      setError('As senhas não coincidem.');
+      setError('Passwords do not match.');
       return;
     }
 
@@ -29,79 +30,88 @@ function RegisterPage() {
       const data = await response.json();
 
       if (response.ok) {
-        setSuccess('Cadastro realizado com sucesso! Redirecionando para login...');
+        setSuccess('Registration successful! Redirecting to login...');
         setTimeout(() => navigate('/login'), 1500);
       } else {
-        setError(data.error || 'Falha ao registrar usuário.');
+        setError(data.error || 'Failed to register user.');
       }
     } catch (err) {
-      console.error('Erro:', err);
-      setError('Erro ao conectar com o servidor.');
+      console.error('Error:', err);
+      setError('Error connecting to the server.');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 px-4">
-      <div className="bg-gray-800 shadow-lg rounded-xl p-10 w-full max-w-md">
-        <h1 className="text-3xl md:text-4xl font-bold text-center text-cyan-400 mb-8">
-          Cadastro de Usuário
+    // Fundo principal escuro, igual ao do Login
+    <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-300 font-sans p-4">
+      
+      {/* Painel do formulário com o mesmo efeito de brilho neon */}
+      <div className="bg-black/50 border border-red-500/30 rounded-md shadow-lg p-8 w-full max-w-sm
+                      shadow-[0_0_15px_rgba(239,68,68,0.2),_inset_0_0_10px_rgba(239,68,68,0.1)]">
+        
+        
+        <h1 className="text-xl font-light text-center text-transparent mb-8 tracking-wider [-webkit-text-stroke:1px_theme(colors.red.500)] [text-shadow:0_0_10px_theme(colors.red.500)]">
+          Create Your Account
         </h1>
 
-        {error && <p className="text-red-400 text-sm mb-4 text-center">{error}</p>}
-        {success && <p className="text-green-400 text-sm mb-4 text-center">{success}</p>}
+        {/* Mensagens de erro e sucesso com o novo estilo */}
+        {error && <p className="text-red-400 text-sm mb-6 text-center bg-red-900/50 p-3 rounded-md border border-red-500/30">{error}</p>}
+        {success && <p className="text-green-400 text-sm mb-6 text-center bg-green-900/50 p-3 rounded-md border border-green-500/30">{success}</p>}
 
         <form onSubmit={handleRegister} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Usuário</label>
+            <label className="block text-xs font-semibold text-gray-400 mb-2 tracking-widest">USERNAME</label>
             <input
               type="text"
-              className="w-full px-4 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full bg-gray-900/50 border-b-2 border-gray-700 text-gray-200 p-2 
+                         focus:outline-none focus:ring-0 focus:border-red-500 transition-colors"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Digite seu usuário"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Senha</label>
+            <label className="block text-xs font-semibold text-gray-400 mb-2 tracking-widest">PASSWORD</label>
             <input
               type="password"
-              className="w-full px-4 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full bg-gray-900/50 border-b-2 border-gray-700 text-gray-200 p-2 
+                         focus:outline-none focus:ring-0 focus:border-red-500 transition-colors"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Digite sua senha"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Confirme a Senha</label>
+            <label className="block text-xs font-semibold text-gray-400 mb-2 tracking-widest">CONFIRM PASSWORD</label>
             <input
               type="password"
-              className="w-full px-4 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full bg-gray-900/50 border-b-2 border-gray-700 text-gray-200 p-2 
+                         focus:outline-none focus:ring-0 focus:border-red-500 transition-colors"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              placeholder="Repita sua senha"
               required
             />
           </div>
-
+          
+          {/* Botão de registro com o mesmo estilo do botão de login */}
           <button
             type="submit"
-            className="w-full py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg transition duration-300"
+            className="w-full py-3 font-bold text-red-400 bg-transparent border-2 border-red-500 rounded-md
+                       hover:bg-red-500 hover:text-white hover:shadow-[0_0_15px_rgba(239,68,68,0.5)] transition-all duration-300"
           >
-            Registrar
+            REGISTER
           </button>
         </form>
 
-        <p className="mt-4 text-center text-gray-400 text-sm">
-          Já tem conta?{' '}
+        <p className="mt-8 text-center text-gray-500 text-sm">
+          Already have an account?{' '}
           <button
-            className="text-cyan-400 hover:underline"
+            className="font-semibold text-gray-300 hover:text-red-400"
             onClick={() => navigate('/login')}
           >
-            Faça login
+            Log in
           </button>
         </p>
       </div>

@@ -1,68 +1,145 @@
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import logoImage from '../assets/logo.png';
+
+
+// Ícone de chevron (o mesmo de antes)
+const ChevronRightIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
+    <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+  </svg>
+);
+
+// Estrutura de dados para os links (a mesma de antes)
+const navSections = {
+  operacao: {
+    title: 'Operation',
+    links: [
+      { path: '/apikeys', label: '1 - API Keys' },
+      { path: '/strategies', label: '2 - Configuration' },
+      { path: '/', label: '3 - Strategy' },
+      { path: '/indicators', label: '4 - Indicators' },
+    ],
+  },
+  mercado: {
+    title: 'Visualization',
+    links: [
+      { path: '/signals', label: 'Signals' },
+      { path: '/sharing', label: 'Sharing' },
+      { path: '/subscriptions', label: 'Subscriptions' },
+    ],
+  },
+};
 
 function SidebarLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Função para encontrar a seção ativa na carga inicial da página
+  const findInitialOpenSection = () => {
+    for (const sectionKey in navSections) {
+      if (navSections[sectionKey].links.some(link => link.path === location.pathname)) {
+        return [sectionKey]; // Retorna um array com a chave da seção ativa
+      }
+    }
+    return []; // Retorna um array vazio se nenhuma estiver ativa
+  };
+
+  // MUDANÇA 1: O estado agora é um array para guardar múltiplas seções abertas.
+  // Ele já começa com a seção da página atual aberta.
+  const [openSections, setOpenSections] = useState(findInitialOpenSection);
 
   const handleLogout = () => {
-    localStorage.removeItem('authToken'); // remove o token salvo
-    navigate('/login', { replace: true }); // redireciona o usuário
+    localStorage.removeItem('authToken');
+    navigate('/login', { replace: true });
+  };
+  
+  // MUDANÇA 2: A lógica de toggle agora adiciona ou remove a seção do array.
+  const toggleSection = (sectionKey) => {
+    setOpenSections(prevOpenSections => 
+      prevOpenSections.includes(sectionKey)
+        ? prevOpenSections.filter(key => key !== sectionKey) // Se já está aberta, remove (fecha)
+        : [...prevOpenSections, sectionKey]                  // Se está fechada, adiciona (abre)
+    );
+  };
+
+  const getLinkClass = (path) => {
+    return location.pathname === path
+      ? 'bg-slate-700 text-white'
+      : 'text-slate-400 hover:bg-slate-700/50 hover:text-white';
   };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-blue-950 via-purple-900 to-black text-white font-sans">
-      <aside className="w-64 bg-gradient-to-b from-blue-900 to-purple-900 p-6 shadow-lg flex flex-col justify-between">
+    // Fundo principal escuro
+    <div className="flex min-h-screen bg-gray-950 font-sans">
+      
+      {/* Sidebar com fundo preto e borda neon vermelha */}
+      <aside className="w-64 bg-black/80 backdrop-blur-sm p-6 flex flex-col justify-between border-r border-red-500/30">
         <div>
-          <h1 className="text-2xl font-bold text-center text-cyan-300 mb-6">TradeX</h1>
-          <nav>
-            <ul className="space-y-4">
-              <li>
-                <Link to="/apikeys" className="block py-2 px-4 rounded hover:bg-pink-600 hover:text-white transition-all duration-200 text-pink-300">
-                  1 - API Keys
-                </Link>
-              </li>
-              <li>
-                <Link to="/strategies" className="block py-2 px-4 rounded hover:bg-purple-600 hover:text-white transition-all duration-200 text-purple-300">
-                  2 - Configuration
-                </Link>
-              </li>
-              <li>
-                <Link to="/" className="block py-2 px-4 rounded hover:bg-cyan-600 hover:text-white transition-all duration-200 text-cyan-300">
-                  3 - Strategy
-                </Link>
-              </li>
-              
-              <li>
-                <Link to="/indicators" className="block py-2 px-4 rounded hover:bg-green-600 hover:text-white transition-all duration-200 text-green-300">
-                  4 - Indicators
-                </Link>
-              </li>
-              
-              <li>
-                <Link to="/signals" className="block py-2 px-4 rounded hover:bg-green-600 hover:text-white transition-all duration-200 text-green-300">
-                  Signals
-                </Link>
-              </li>
-              <li>
-                <Link to="/sharing" className="block py-2 px-4 rounded hover:bg-green-600 hover:text-white transition-all duration-200 text-green-300">
-                  Sharing
-                </Link>
-              </li>
-              <li>
-                <Link to="/subscriptions" className="block py-2 px-4 rounded hover:bg-green-600 hover:text-white transition-all duration-200 text-green-300">
-                  Subscriptions
-                </Link>
-              </li>
-            </ul>
+          <Link to="/">
+            {/* Logo com o mesmo efeito de "glow" da página de login */}
+            <img 
+              src={logoImage} 
+              alt="TradeX Logo" 
+              className="w-40 h-auto mx-auto mb-10"
+              style={{ filter: 'drop-shadow(0 0 8px rgba(239, 68, 68, 0.5))' }}
+            />
+          </Link>
+          
+          <nav className="flex flex-col space-y-2">
+            {Object.entries(navSections).map(([key, section]) => {
+              const isOpen = openSections.includes(key);
+
+              return (
+                <div key={key}>
+                  {/* Botão da seção com estilo atualizado */}
+                  <button
+                    onClick={() => toggleSection(key)}
+                    className="w-full flex items-center justify-between text-left py-2 px-4 rounded-md hover:bg-gray-800 focus:outline-none"
+                  >
+                    <span className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+                      {section.title}
+                    </span>
+                    <ChevronRightIcon
+                      className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${isOpen ? 'rotate-90' : ''}`}
+                    />
+                  </button>
+                  
+                  <div
+                    className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'max-h-96 mt-2' : 'max-h-0'}`}
+                  >
+                    <ul className="space-y-1 border-l border-gray-800 ml-4">
+                      {section.links.map((link) => (
+                        <li key={link.path} className="pl-2">
+                          {/* Links com o novo estilo ativo/inativo */}
+                          <Link
+                            to={link.path}
+                            className={`block w-full py-2 px-3 rounded-r-md text-sm transition-colors duration-200 ${getLinkClass(link.path)}`}
+                          >
+                            {link.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              );
+            })}
           </nav>
         </div>
+
+        {/* Botão de Logout com o novo tema interativo */}
         <button
           onClick={handleLogout}
-          className="mt-6 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded"
+          className="mt-6 w-full py-2 font-semibold text-gray-400 bg-transparent border-2 border-gray-700 rounded-md
+                     hover:bg-red-500 hover:border-red-500 hover:text-white transition-all duration-300"
         >
           Logout
         </button>
       </aside>
-      <main className="flex-1 p-8 bg-gradient-to-br from-gray-900 to-black shadow-inner overflow-y-auto">
+
+      {/* Conteúdo principal com fundo escuro */}
+      <main className="flex-1 p-8 bg-gray-950/70 overflow-y-auto">
         <Outlet />
       </main>
     </div>

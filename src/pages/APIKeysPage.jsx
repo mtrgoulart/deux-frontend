@@ -1,45 +1,22 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../utils/api';
+import { AddApiKeyForm } from '../components/AddApiKeyForm';
+import { EditApiKeyModal } from '../components/EditApiKeyModal';
+import { TableSkeleton } from '../components/TableSkeleton';
+import { FullScreenLoader } from '../components/FullScreenLoader';
 
 function ApiKeysPage() {
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
-  const [extraParams, setExtraParams] = useState([]);
-  const [message, setMessage] = useState('');
-  const [formErrors, setFormErrors] = useState({});
-  const [loadingSave, setLoadingSave] = useState(false);
-  const [loadingDelete, setLoadingDelete] = useState(false);
-  const [deleteStatusMessage, setDeleteStatusMessage] = useState('');
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [keyToDelete, setKeyToDelete] = useState(null);
-  const [showEditForm, setShowEditForm] = useState(false);
-  const [editingKeyId, setEditingKeyId] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [selectedKey, setSelectedKey] = useState(null);
   const tutorialUrl = import.meta.env.VITE_TUTORIAL_URL;
 
-  const safePattern = /^[a-zA-Z0-9_-]+$/;
+  const [highlightedKeyId, setHighlightedKeyId] = useState(null);
 
-  const [formData, setFormData] = useState({
-    name: '',
-    exchange_id: '',
-    api_key: '',
-    secret_key: '',
-  });
-
-  const handleExtraParamChange = (index, key, value) => {
-    setExtraParams((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [key]: value } : item))
-    );
-  };
-
-  const addExtraParam = () => {
-    setExtraParams([...extraParams, { key: '', value: '' }]);
-  };
-
-  const removeExtraParam = (index) => {
-    setExtraParams(extraParams.filter((_, i) => i !== index));
-  };
-
+  // --- LÓGICA RESTAURADA ---
   const { data: apiKeys, isLoading: loadingApiKeys } = useQuery({
     queryKey: ['user_apikeys'],
     queryFn: async () => {
@@ -49,358 +26,200 @@ function ApiKeysPage() {
     },
   });
 
-  const { data: exchanges, isLoading: loadingExchanges } = useQuery({
+  const { data: exchanges } = useQuery({
     queryKey: ['exchanges'],
     queryFn: async () => {
       const response = await apiFetch(`/get_exchanges`);
       const data = await response.json();
-      return data.exchanges || [];
+      return data.exchanges || []; // Garante que nunca retorne undefined
     },
   });
 
-
-  const editNameMutation = useMutation({
-    mutationFn: async () => {
-      return await apiFetch('/edit_apikey_name', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          api_key_id: editingKeyId,
-          name: formData.name,
-        })
+  const addMutation = useMutation({
+    mutationFn: (newKeyData) => apiFetch(`/save_user_apikey`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newKeyData),
+    }),
+    onSuccess: (newlySavedKey) => {
+      queryClient.invalidateQueries({ queryKey: ['user_apikeys'] }).then(() => {
+        setHighlightedKeyId(newlySavedKey.api_key_id);
+        setTimeout(() => setHighlightedKeyId(null), 2000);
       });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['user_apikeys']);
-      setShowEditForm(false);
-      setEditingKeyId(null);
-    },
-    onError: () => {
-      alert('Error on edit API Key');
-    }
-  });
-
-  const mutation = useMutation({
-    mutationFn: async () => {
-      setLoadingSave(true);
-      const additional = Object.fromEntries(extraParams.map(p => [p.key, p.value]));
-      return await apiFetch(`/save_user_apikey`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          exchange_id: formData.exchange_id,
-          api_credentials: {
-            api_key: formData.api_key,
-            secret_key: formData.secret_key,
-            ...additional,
-          },
-        }),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['user_apikeys']);
-      setMessage("Sucessful saved");
-      setFormData({ name: '', exchange_id: '', api_key: '', secret_key: '' });
-      setExtraParams([]);
       setShowAddForm(false);
-      setLoadingSave(false);
     },
-    onError: () => {
-      setMessage("Error saving credentials.");
-      setLoadingSave(false);
+    onError: () => alert("Error saving credentials."),
+  });
+
+  const editMutation = useMutation({
+    mutationFn: ({ apiKeyId, name }) => apiFetch('/edit_apikey_name', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key_id: apiKeyId, name }),
+    }),
+    onSuccess: (updatedKey) => {
+      queryClient.invalidateQueries({ queryKey: ['user_apikeys'] }).then(() => {
+        setHighlightedKeyId(updatedKey.api_key_id);
+        setTimeout(() => setHighlightedKeyId(null), 2000);
+      });
+      setShowEditModal(false);
     },
+    onError: () => alert('Error editing API Key'),
   });
 
   const removeMutation = useMutation({
-    mutationFn: async (api_key_id) => {
-      setLoadingDelete(true);
-      setDeleteStatusMessage('Removendo chave...');
-  
-      const response = await apiFetch(`/remove_user_apikey`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ api_key_id }),
-      });
-  
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro desconhecido');
-      }
-  
-      return data;
-    },
+    mutationFn: (apiKeyId) => apiFetch(`/remove_user_apikey`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key_id: apiKeyId }),
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries(['user_apikeys']);
-      setDeleteStatusMessage('✅ Chave removida com sucesso!');
-      setTimeout(() => {
-        setLoadingDelete(false);
-        setConfirmDeleteOpen(false);
-        setKeyToDelete(null);
-        setDeleteStatusMessage('');
-      }, 2000);
+      queryClient.invalidateQueries({ queryKey: ['user_apikeys'] });
     },
-    onError: (error) => {
-      const msg = error.message.includes('API Key em uso')
-        ? '❌ Erro: API Key em uso'
-        : `❌ ${error.message}`;
-      setDeleteStatusMessage(msg);
-      setTimeout(() => {
-        setLoadingDelete(false);
-        setDeleteStatusMessage('');
-      }, 3000);
-    }
+    onError: (error) => alert(error.message),
+    onSettled: () => {
+      setShowConfirmDelete(false);
+    },
   });
 
-  const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  // --- LÓGICA RESTAURADA ---
+  const handleSaveNewKey = (formData, extraParams) => {
+    const additional = Object.fromEntries(extraParams.map(p => [p.key, p.value]));
+    addMutation.mutate({
+      name: formData.name,
+      exchange_id: formData.exchange_id,
+      api_credentials: {
+        api_key: formData.api_key,
+        secret_key: formData.secret_key,
+        ...additional,
+      },
+    });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const errors = {};
-    if (!formData.name.trim()) errors.name = "Campo obrigatório";
-    if (!formData.exchange_id) errors.exchange_id = "Campo obrigatório";
-    if (!formData.api_key.trim()) errors.api_key = "Campo obrigatório";
-    if (!formData.secret_key.trim()) errors.secret_key = "Campo obrigatório";
-    if (formData.api_key && !safePattern.test(formData.api_key)) errors.api_key = "Caracteres inválidos";
-    if (formData.secret_key && !safePattern.test(formData.secret_key)) errors.secret_key = "Caracteres inválidos";
-    extraParams.forEach((p, i) => {
-      if (!p.key.trim() || !p.value.trim()) errors[`extra_${i}`] = "Preencha chave e valor";
-      if (!safePattern.test(p.key) || !safePattern.test(p.value)) errors[`extra_${i}`] = "Use apenas letras, números, hífen ou underscore";
-    });
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      return;
-    }
-    setFormErrors({});
-    setMessage('');
-    mutation.mutate();
+  const handleSaveEditedKey = (apiKeyId, name) => {
+    editMutation.mutate({ apiKeyId, name });
   };
+
+  const handleDeleteKey = () => {
+    if (selectedKey) {
+      // Chama a mutação diretamente
+      removeMutation.mutate(selectedKey.api_key_id);
+    }
+};
+
+  const openEditModal = (apiKey) => {
+    setSelectedKey(apiKey);
+    setShowEditModal(true);
+  };
+
+  const openDeleteConfirm = (apiKey) => {
+    setSelectedKey(apiKey);
+    setShowConfirmDelete(true);
+  };
+
+  const buttonPrimaryStyle = "px-4 py-2 font-semibold text-white rounded-md transition-all duration-300 transform focus:outline-none";
+  const buttonSecondaryStyle = `${buttonPrimaryStyle} bg-transparent border-2 border-gray-700 hover:bg-red-500 hover:border-red-500`;
+
+  let loaderMessage = '';
+  if (addMutation.isLoading) loaderMessage = 'Saving new key...';
+  if (editMutation.isLoading) loaderMessage = 'Updating key...';
+  if (removeMutation.isLoading) loaderMessage = 'Deleting key...';
 
   return (
-    <div className="p-6 text-white">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-semibold">API Keys</h2>
+    <div className="p-4 text-slate-200">
+      <FullScreenLoader
+        isOpen={addMutation.isLoading || editMutation.isLoading || removeMutation.isLoading}
+        message={loaderMessage}
+      />
 
-        {/* Agrupador para os botões */}
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-3xl font-bold text-white" style={{ textShadow: '0 0 8px rgba(239, 68, 68, 0.6)' }}>
+          API Keys
+        </h2>
         <div className="flex items-center gap-4">
-          
-          {/* Botão de Tutorial (novo) */}
-          <a
-            href={tutorialUrl}
-            target="_blank" // Abre em nova aba
-            rel="noopener noreferrer" // Medida de segurança para links em nova aba
-            className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded font-semibold text-white no-underline"
-          >
+          <a href={tutorialUrl} target="_blank" rel="noopener noreferrer" className={buttonSecondaryStyle}>
             Tutorial
           </a>
-
-          {/* Botão de Adicionar API Key (existente) */}
-          <button 
-            onClick={() => setShowAddForm(true)} 
-            className="bg-cyan-500 hover:bg-cyan-600 px-4 py-2 rounded"
-          >
+          <button onClick={() => setShowAddForm(true)} className={`${buttonPrimaryStyle} bg-red-500/90 hover:bg-red-500 border border-red-500/50 hover:border-red-400 hover:-translate-y-px`} style={{ filter: 'drop-shadow(0 0 6px rgba(239, 68, 68, 0.5))' }}>
             Add API Key
           </button>
         </div>
       </div>
 
-      {showAddForm && (
-        <form onSubmit={handleSubmit} className="bg-gray-700 p-4 mb-6 rounded grid grid-cols-2 gap-4">
-          <input name="name" value={formData.name} onChange={handleFormChange} placeholder="Name" className="p-2 rounded bg-gray-800 text-white" required />
-          <select name="exchange_id" value={formData.exchange_id} onChange={handleFormChange} className="p-2 rounded bg-gray-800 text-white" required>
-            <option value="">Select exchange</option>
-            {exchanges?.map((ex) => (
-              <option key={ex.id} value={ex.id}>{ex.name}</option>
-            ))}
-          </select>
-          <input name="api_key" value={formData.api_key} onChange={handleFormChange} placeholder="API Key" className="p-2 rounded bg-gray-800 text-white" required />
-          <input name="secret_key" value={formData.secret_key} onChange={handleFormChange} placeholder="Secret Key" className="p-2 rounded bg-gray-800 text-white" required />
+      <AddApiKeyForm
+        isOpen={showAddForm}
+        onClose={() => setShowAddForm(false)}
+        onSave={handleSaveNewKey}
+        exchanges={exchanges}
+        isSaving={addMutation.isLoading}
+      />
 
-          <div className="col-span-2">
-            <h3 className="mb-2 text-sm">Additional Parameters</h3>
-            {extraParams.map((param, index) => (
-              <div key={index} className="flex gap-2 mb-2">
-                <input type="text" placeholder="Chave" value={param.key} onChange={(e) => handleExtraParamChange(index, 'key', e.target.value)} className="flex-1 p-2 rounded bg-gray-800 text-white" />
-                <input type="text" placeholder="Valor" value={param.value} onChange={(e) => handleExtraParamChange(index, 'value', e.target.value)} className="flex-1 p-2 rounded bg-gray-800 text-white" />
-                <button type="button" onClick={() => removeExtraParam(index)} className="bg-red-500 hover:bg-red-600 px-2 rounded">X</button>
-              </div>
-            ))}
-            <button type="button" onClick={addExtraParam} className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm">+ New Parameter</button>
-          </div>
-
-          <div className="col-span-2 flex justify-end gap-4">
-            <button type="submit" disabled={mutation.isLoading} className={`px-4 py-2 rounded ${mutation.isLoading ? 'bg-gray-600' : 'bg-green-600 hover:bg-green-700'}`}>{mutation.isLoading ? 'Saving...' : 'Save'}</button>
-            <button type="button" onClick={() => setShowAddForm(false)} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Cancel</button>
-          </div>
-
-          {message && <div className="col-span-2 text-sm text-green-400 mt-2">{message}</div>}
-        </form>
-      )}
-
-      {loadingApiKeys ? <p>Loading API Keys...</p> : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full table-auto bg-gray-800 rounded">
-            <thead>
-              <tr className="bg-gray-700 text-left">
-                <th className="px-4 py-2">ID</th>
-                <th className="px-4 py-2">Name</th>
-                <th className="px-4 py-2">Exchange</th>
-                <th className="px-4 py-2"></th>
+      {loadingApiKeys ? <TableSkeleton /> : (
+        <div className="overflow-x-auto bg-black/50 rounded-lg border border-gray-800">
+          <table className="min-w-full table-auto">
+            <thead className='border-b border-red-500/30'>
+              <tr className="text-left text-sm font-semibold text-gray-400 uppercase tracking-wider">
+                <th className="px-6 py-4">ID</th>
+                <th className="px-6 py-4">Name</th>
+                <th className="px-6 py-4">Exchange</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {apiKeys?.map((key) => (
-                <tr key={key.api_key_id} className="border-t border-gray-700">
-                  <td className="px-4 py-2">{key.api_key_id}</td>
-                  <td className="px-4 py-2">{key.name || key.api_credentials?.api_key}</td>
-                  <td className="px-4 py-2">{key.exchange_name}</td>                  
-                  <td className="px-4 py-2">
-  <div className="flex gap-2">
-    <button
-      onClick={() => {
-        setFormData({
-          name: key.name,
-          exchange_id: key.exchange_id,
-          api_key: key.api_credentials?.api_key,
-          secret_key: key.api_credentials?.secret_key,
-        });
+            <tbody className="text-slate-300">
+              {apiKeys?.map((key) => {
+    const isHighlighted = key.api_key_id === highlightedKeyId;
+    // A variável isDeleting e a classe animate-glitch-out foram removidas.
+    let rowClass = "border-t border-gray-800/50 hover:bg-gray-900/50 transition-colors";
+    if (isHighlighted) rowClass += ' animate-glow-success';
 
-        const extras = Object.entries(key.api_credentials || {})
-          .filter(([k]) => !['api_key', 'secret_key'].includes(k))
-          .map(([k, v]) => ({ key: k, value: v }));
-
-        setExtraParams(extras);
-        setShowEditForm(true);
-        setEditingKeyId(key.api_key_id);
-      }}
-      className="hover:opacity-80"
-      title="Configurar"
-    >
-      <img src="/icons/config.svg" alt="Configurar" className="w-7 h-7" />
-    </button>
-
-    <button
-      onClick={() => {
-        setKeyToDelete(key);
-        setConfirmDeleteOpen(true);
-      }}
-      className="hover:opacity-80"
-      title="Remover"
-    >
-      <img src="/icons/trash.svg" alt="Remover" className="w-7 h-7" />
-    </button>
-  </div>
-</td>
-                </tr>
-              ))}
+    return (
+      <tr key={key.api_key_id} className={rowClass}>
+        {/* --- CONTEÚDO DA TABELA RESTAURADO --- */}
+        <td className="px-6 py-4 font-mono text-xs">{key.api_key_id}</td>
+        <td className="px-6 py-4">{key.name || <span className="text-gray-500 italic">Untitled</span>}</td>
+        <td className="px-6 py-4">{key.exchange_name}</td>
+        <td className="px-6 py-4">
+          <div className="flex gap-4 justify-end">
+            <button onClick={() => openEditModal(key)} className="hover:opacity-80 transition-opacity" title="Configure">
+             <img src="/icons/config.svg" alt="Configure" className="w-7 h-7" />
+            </button>
+            <button onClick={() => openDeleteConfirm(key)} className="hover:opacity-80 transition-opacity" title="Remove">
+              <img src="/icons/trash.svg" alt="Remove" className="w-7 h-7" />
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+})}
             </tbody>
           </table>
-          {showEditForm && (
-  <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
-    <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg">
-      <h3 className="text-xl font-semibold mb-4">Edit API Key Name</h3>
-      <div className="space-y-4">
-        <input
-          name="name"
-          value={formData.name}
-          onChange={handleFormChange}
-          placeholder="API Key name"
-          className="w-full p-2 rounded bg-gray-700 text-white"
-        />
-
-        <input
-          name="api_key"
-          value={formData.api_key}
-          disabled
-          className="w-full p-2 rounded bg-gray-700 text-white opacity-70 cursor-not-allowed"
-        />
-        <input
-          name="secret_key"
-          value={formData.secret_key}
-          disabled
-          className="w-full p-2 rounded bg-gray-700 text-white opacity-70 cursor-not-allowed"
-        />
-
-        {extraParams.length > 0 && (
-          <div>
-            <h4 className="text-sm mb-1">Parâmetros Adicionais</h4>
-            {extraParams.map((param, index) => (
-              <div key={index} className="flex gap-2 mb-2">
-                <input
-                  value={param.key}
-                  disabled
-                  className="flex-1 p-2 rounded bg-gray-700 text-white opacity-70 cursor-not-allowed"
-                />
-                <input
-                  value={param.value}
-                  disabled
-                  className="flex-1 p-2 rounded bg-gray-700 text-white opacity-70 cursor-not-allowed"
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="flex justify-end gap-4">
-          <button
-            onClick={() => {
-              editNameMutation.mutate();
-              setShowEditForm(false);
-            }}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded"
-          >
-            Save
-          </button>
-          <button
-            onClick={() => {
-              setShowEditForm(false);
-              setFormData({ name: '', exchange_id: '', api_key: '', secret_key: '' });
-              setExtraParams([]);
-            }}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded"
-          >
-            Cancelar
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-
         </div>
       )}
 
-      {confirmDeleteOpen && keyToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-          <div className="bg-gray-900 p-6 rounded-lg shadow-md text-center max-w-sm w-full">
-            <h3 className="text-xl font-semibold text-white mb-4">Confirmar Exclusão</h3>
-            <p className="text-white mb-2">Deseja realmente deletar a chave:</p>
-            <p className="text-red-400 font-bold truncate">ID: {keyToDelete.api_key_id}</p>
-            <p className="text-gray-400 text-sm mb-4 italic truncate">{keyToDelete.name}</p>
+      <EditApiKeyModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        onSave={handleSaveEditedKey}
+        apiKeyToEdit={selectedKey}
+        isSaving={editMutation.isLoading}
+      />
+
+      {showConfirmDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-gray-900 p-8 rounded-lg shadow-lg text-center max-w-sm w-full border border-red-500/30">
+            <h3 className="text-xl font-semibold text-white mb-4">Confirm Deletion</h3>
+            <p className="text-slate-300 mb-2">Do you really want to delete the key:</p>
+            <p className="text-red-400 font-bold truncate text-lg">{selectedKey?.name}</p>
+            <p className="text-gray-500 text-sm mb-6 italic truncate">ID: {selectedKey?.api_key_id}</p>
             <div className="flex justify-center gap-4">
-              <button onClick={() => removeMutation.mutate(keyToDelete.api_key_id)} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-white">Confirmar</button>
-              <button onClick={() => setConfirmDeleteOpen(false)} className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded text-white">Cancelar</button>
+              <button onClick={() => setShowConfirmDelete(false)} className={`${buttonSecondaryStyle} border-gray-600`}>Cancel</button>
+              <button onClick={handleDeleteKey} disabled={removeMutation.isLoading} className={`${buttonPrimaryStyle} bg-red-600 hover:bg-red-700`}>
+                Confirm
+              </button>
             </div>
           </div>
         </div>
       )}
-
-      {loadingSave && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-          <p className="text-white text-xl">Saving credentials...</p>
-        </div>
-      )}
-
-      {loadingDelete && (
-              <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-                <div className="bg-gray-900 px-6 py-4 rounded-lg shadow-lg text-white text-lg">
-                  {deleteStatusMessage}
-                </div>
-              </div>
-            )}
     </div>
   );
 }
