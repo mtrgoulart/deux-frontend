@@ -9,6 +9,8 @@ import SignalsPage from './pages/SignalsPage';
 import IndicatorsPage from './pages/IndicatorsPage';
 import SharingPage from './pages/SharingPage';
 import SubscriptionsPage from './pages/SubscriptionPage';
+import OperationsPage from './pages/OperationsPage'
+import SendSignalPage from './pages/SendSignalPage';
 
 
 
@@ -26,6 +28,8 @@ function App() {
         <Route path="signals" element={<SignalsPage />} />
         <Route path="subscriptions" element={<SubscriptionsPage />} />
         <Route path="apikeys" element={<ApiKeysPage />} />
+        <Route path="operations" element={<OperationsPage />} />
+        <Route path="send-signal" element={<SendSignalPage />} />
       </Route>
     </Routes>
   );

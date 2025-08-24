@@ -5,7 +5,7 @@ export function PageHeader({ onAddStrategy }) {
     <div className="flex justify-between items-center mb-8">
       {/* ✅ Traduzido */}
       <h2 className="text-3xl font-bold text-white tracking-wider" style={{ textShadow: '0 0 8px rgba(239, 68, 68, 0.4)' }}>
-        Strategies
+        Configuration
       </h2>
       <button
         onClick={onAddStrategy}
@@ -13,7 +13,7 @@ export function PageHeader({ onAddStrategy }) {
                    hover:bg-red-600 hover:shadow-[0_0_15px_rgba(239,68,68,0.6)] transition-all duration-300"
       >
         {/* ✅ Traduzido */}
-        Add Strategy
+        Add Configuration
       </button>
     </div>
   );

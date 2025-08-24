@@ -13,6 +13,7 @@ function ApiKeysPage() {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [selectedKey, setSelectedKey] = useState(null);
   const tutorialUrl = import.meta.env.VITE_TUTORIAL_URL;
+  const apiKeyHeaders = ["ID", "Name", "Exchange", "Actions"];
 
   const [highlightedKeyId, setHighlightedKeyId] = useState(null);
 
@@ -154,7 +155,7 @@ function ApiKeysPage() {
         isSaving={addMutation.isLoading}
       />
 
-      {loadingApiKeys ? <TableSkeleton /> : (
+      {loadingApiKeys ? <TableSkeleton headers={apiKeyHeaders} /> : (
         <div className="overflow-x-auto bg-black/50 rounded-lg border border-gray-800">
           <table className="min-w-full table-auto">
             <thead className='border-b border-red-500/30'>

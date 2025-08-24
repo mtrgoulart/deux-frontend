@@ -25,8 +25,15 @@ const navSections = {
     title: 'Visualization',
     links: [
       { path: '/signals', label: 'Signals' },
+      { path: '/operations', label: 'Operations' },
       { path: '/sharing', label: 'Sharing' },
       { path: '/subscriptions', label: 'Subscriptions' },
+    ],
+  },
+  development: {
+    title: 'Development',
+    links: [
+      { path: '/send-signal', label: 'Send Signal' },
     ],
   },
 };
