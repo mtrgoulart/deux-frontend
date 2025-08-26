@@ -1,18 +1,21 @@
+// src/pages/OperationsPage.jsx
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '../utils/api';
 import { TableSkeleton } from '../components/TableSkeleton';
-// Para os ícones de ordenação, você precisará instalar a biblioteca react-icons:
-// npm install react-icons
+import { ApiResponseModal } from '../components/ApiResponseModal';
 import { FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
 
 function OperationsPage() {
   const [selectedInstance, setSelectedInstance] = useState('');
-  const tableHeaders = ["ID", "Date", "Symbol", "Side", "Size", "Price", "Status"];
-  // Estado para controlar a coluna e a direção da ordenação
+  const tableHeaders = ["ID", "Date", "Symbol", "Side", "Size", "Price", "Status", "API Response"];
+  
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedApiResponse, setSelectedApiResponse] = useState(null);
 
-  // 1. Busca a lista de todas as instâncias disponíveis para popular o seletor.
   const { data: instances, isLoading: loadingInstances } = useQuery({
     queryKey: ['instances'],
     queryFn: async () => {
@@ -22,14 +25,12 @@ function OperationsPage() {
     },
   });
 
-  // 2. Efeito para selecionar a primeira instância da lista por padrão.
   useEffect(() => {
     if (!selectedInstance && instances && instances.length > 0) {
       setSelectedInstance(instances[0].id);
     }
   }, [instances, selectedInstance]);
 
-  // 3. Busca as operações para a instância que está selecionada.
   const { data: operations, isLoading: loadingOperations } = useQuery({
     queryKey: ['operations', selectedInstance],
     queryFn: async () => {
@@ -41,24 +42,38 @@ function OperationsPage() {
     enabled: !!selectedInstance,
   });
 
-  // 4. Lógica de Ordenação
   const sortedOperations = useMemo(() => {
     if (!operations || operations.length === 0) return [];
     
     const sorted = [...operations];
     sorted.sort((a, b) => {
-      if (a[sortConfig.key] < b[sortConfig.key]) {
-        return sortConfig.direction === 'asc' ? -1 : 1;
+      const key = sortConfig.key;
+      const direction = sortConfig.direction === 'asc' ? 1 : -1;
+
+      const valA = a[key];
+      const valB = b[key];
+      
+      // ===== INÍCIO DA CORREÇÃO =====
+      // Se a chave for 'date', faz a comparação cronológica correta
+      if (key === 'date') {
+        const dateA = new Date(valA).getTime(); // Converte para timestamp
+        const dateB = new Date(valB).getTime(); // Converte para timestamp
+        return (dateA - dateB) * direction;
       }
-      if (a[sortConfig.key] > b[sortConfig.key]) {
-        return sortConfig.direction === 'asc' ? 1 : -1;
+      // ===== FIM DA CORREÇÃO =====
+
+      // Mantém a lógica original para todas as outras colunas
+      if (valA < valB) {
+        return -1 * direction;
+      }
+      if (valA > valB) {
+        return 1 * direction;
       }
       return 0;
     });
     return sorted;
   }, [operations, sortConfig]);
 
-  // 5. Função para lidar com o clique no cabeçalho
   const handleSort = (key) => {
     let direction = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -66,8 +81,24 @@ function OperationsPage() {
     }
     setSortConfig({ key, direction });
   };
+  
+  const handleViewResponse = (apiResponse) => {
+    try {
+      const data = typeof apiResponse === 'string' ? JSON.parse(apiResponse) : apiResponse;
+      setSelectedApiResponse(data);
+      setIsModalOpen(true);
+    } catch (error) {
+      console.error("Failed to parse API response JSON:", error);
+      setSelectedApiResponse({ error: "Invalid JSON format", originalResponse: apiResponse });
+      setIsModalOpen(true);
+    }
+  };
 
-  // 6. Componente auxiliar para renderizar o ícone de ordenação
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedApiResponse(null);
+  };
+
   const SortIcon = ({ columnKey }) => {
     if (sortConfig.key !== columnKey) {
       return <FaSort className="inline-block ml-1 text-gray-600" />;
@@ -77,7 +108,6 @@ function OperationsPage() {
       <FaSortDown className="inline-block ml-1" />;
   };
   
-  // Formata a data para uma leitura mais amigável
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleString('pt-BR', {
@@ -86,7 +116,6 @@ function OperationsPage() {
     });
   };
 
-  // Componente para o cabeçalho da tabela clicável
   const SortableHeader = ({ columnKey, children }) => (
     <th className="px-6 py-4 cursor-pointer hover:bg-gray-800/50 transition-colors" onClick={() => handleSort(columnKey)}>
       {children} <SortIcon columnKey={columnKey} />
@@ -128,8 +157,8 @@ function OperationsPage() {
                 <SortableHeader columnKey="symbol">Symbol</SortableHeader>
                 <SortableHeader columnKey="side">Side</SortableHeader>
                 <SortableHeader columnKey="size">Size</SortableHeader>
-                <SortableHeader columnKey="price">Price</SortableHeader>
                 <SortableHeader columnKey="status">Status</SortableHeader>
+                <th className="px-6 py-4 text-center">API Response</th>
               </tr>
             </thead>
             <tbody className="text-slate-300">
@@ -149,13 +178,24 @@ function OperationsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4">{op.size}</td>
-                    <td className="px-6 py-4">{op.price}</td>
                     <td className="px-6 py-4">{op.status}</td>
+                    <td className="px-6 py-4 text-center">
+                      {op.api_response ? (
+                        <button
+                          onClick={() => handleViewResponse(op.api_response)}
+                          className="bg-sky-500/20 text-sky-300 border border-sky-500/30 px-4 py-1 rounded-md hover:bg-sky-500/30 transition-colors text-sm font-semibold"
+                        >
+                          View
+                        </button>
+                      ) : (
+                        <span className="text-gray-600">-</span>
+                      )}
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr className="border-t border-gray-800/50">
-                  <td colSpan="7" className="text-center py-10 text-gray-500">
+                  <td colSpan="8" className="text-center py-10 text-gray-500">
                     No operations found for this instance.
                   </td>
                 </tr>
@@ -164,6 +204,12 @@ function OperationsPage() {
           </table>
         </div>
       )}
+
+      <ApiResponseModal 
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        data={selectedApiResponse}
+      />
     </div>
   );
 }

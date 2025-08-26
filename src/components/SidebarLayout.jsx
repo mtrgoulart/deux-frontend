@@ -1,17 +1,23 @@
 import { useState } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import logoImage from '../assets/logo.png';
+import { useAuth } from '../context/AuthContext';
 
-
-// Ícone de chevron (o mesmo de antes)
+// Ícone de chevron
 const ChevronRightIcon = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
     <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
   </svg>
 );
 
-// Estrutura de dados para os links (a mesma de antes)
+// Estrutura de dados para os links com a nova ordem
 const navSections = {
+  administration: {
+    title: 'Administration',
+    links: [
+        { path: '/users', label: 'Users' },
+    ]
+  },
   operacao: {
     title: 'Operation',
     links: [
@@ -35,38 +41,35 @@ const navSections = {
     links: [
       { path: '/send-signal', label: 'Send Signal' },
     ],
-  },
+  }
 };
 
 function SidebarLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
 
-  // Função para encontrar a seção ativa na carga inicial da página
   const findInitialOpenSection = () => {
     for (const sectionKey in navSections) {
       if (navSections[sectionKey].links.some(link => link.path === location.pathname)) {
-        return [sectionKey]; // Retorna um array com a chave da seção ativa
+        return [sectionKey];
       }
     }
-    return []; // Retorna um array vazio se nenhuma estiver ativa
+    return [];
   };
 
-  // MUDANÇA 1: O estado agora é um array para guardar múltiplas seções abertas.
-  // Ele já começa com a seção da página atual aberta.
   const [openSections, setOpenSections] = useState(findInitialOpenSection);
 
   const handleLogout = () => {
-    localStorage.removeItem('authToken');
+    logout();
     navigate('/login', { replace: true });
   };
   
-  // MUDANÇA 2: A lógica de toggle agora adiciona ou remove a seção do array.
   const toggleSection = (sectionKey) => {
     setOpenSections(prevOpenSections => 
       prevOpenSections.includes(sectionKey)
-        ? prevOpenSections.filter(key => key !== sectionKey) // Se já está aberta, remove (fecha)
-        : [...prevOpenSections, sectionKey]                  // Se está fechada, adiciona (abre)
+        ? prevOpenSections.filter(key => key !== sectionKey)
+        : [...prevOpenSections, sectionKey]
     );
   };
 
@@ -77,14 +80,10 @@ function SidebarLayout() {
   };
 
   return (
-    // Fundo principal escuro
     <div className="flex min-h-screen bg-gray-950 font-sans">
-      
-      {/* Sidebar com fundo preto e borda neon vermelha */}
       <aside className="w-64 bg-black/80 backdrop-blur-sm p-6 flex flex-col justify-between border-r border-red-500/30">
         <div>
           <Link to="/">
-            {/* Logo com o mesmo efeito de "glow" da página de login */}
             <img 
               src={logoImage} 
               alt="TradeX Logo" 
@@ -95,11 +94,14 @@ function SidebarLayout() {
           
           <nav className="flex flex-col space-y-2">
             {Object.entries(navSections).map(([key, section]) => {
+              if (key === 'administration' && user?.group !== 'Admin') {
+                return null;
+              }
+
               const isOpen = openSections.includes(key);
 
               return (
                 <div key={key}>
-                  {/* Botão da seção com estilo atualizado */}
                   <button
                     onClick={() => toggleSection(key)}
                     className="w-full flex items-center justify-between text-left py-2 px-4 rounded-md hover:bg-gray-800 focus:outline-none"
@@ -118,7 +120,6 @@ function SidebarLayout() {
                     <ul className="space-y-1 border-l border-gray-800 ml-4">
                       {section.links.map((link) => (
                         <li key={link.path} className="pl-2">
-                          {/* Links com o novo estilo ativo/inativo */}
                           <Link
                             to={link.path}
                             className={`block w-full py-2 px-3 rounded-r-md text-sm transition-colors duration-200 ${getLinkClass(link.path)}`}
@@ -135,7 +136,6 @@ function SidebarLayout() {
           </nav>
         </div>
 
-        {/* Botão de Logout com o novo tema interativo */}
         <button
           onClick={handleLogout}
           className="mt-6 w-full py-2 font-semibold text-gray-400 bg-transparent border-2 border-gray-700 rounded-md
@@ -145,7 +145,6 @@ function SidebarLayout() {
         </button>
       </aside>
 
-      {/* Conteúdo principal com fundo escuro */}
       <main className="flex-1 p-8 bg-gray-950/70 overflow-y-auto">
         <Outlet />
       </main>

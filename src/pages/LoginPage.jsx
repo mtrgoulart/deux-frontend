@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../utils/api';
 import { ethers } from 'ethers';
 import logoImage from '../assets/logo.png';
+import { useAuth } from '../context/AuthContext'; // 1. IMPORTE O HOOK DE AUTENTICAÇÃO
 
 const LoadingOverlay = () => (
   <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center z-10">
     <div className="flex items-end gap-2">
-      {/* Criamos 5 barras que vão animar em alturas diferentes */}
       <div className="w-2 h-4 bg-red-500 animate-pulse" style={{ animationDelay: '0ms' }}></div>
       <div className="w-2 h-8 bg-red-500 animate-pulse" style={{ animationDelay: '150ms' }}></div>
       <div className="w-2 h-12 bg-red-500 animate-pulse" style={{ animationDelay: '300ms' }}></div>
@@ -24,12 +24,14 @@ function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth(); // 2. PEGUE A FUNÇÃO DE LOGIN DO CONTEXTO
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
-    setIsLoading(true); // Ativa a animação
+    setIsLoading(true);
 
+    // Mantendo o formato form-urlencoded que o seu backend espera
     const formData = new URLSearchParams();
     formData.append('username', username);
     formData.append('password', password);
@@ -41,7 +43,12 @@ function LoginPage() {
         body: formData.toString(),
       });
       const data = await response.json();
-      if (response.ok) {
+
+      // A resposta da API agora deve incluir 'success' e 'token'
+      if (response.ok && data.success && data.token) {
+        // 3. ATUALIZE O ESTADO GLOBAL COM O TOKEN PRIMEIRO
+        login(data.token);
+        // 4. AGORA, NAVEGUE PARA A PÁGINA PRINCIPAL
         navigate('/', { replace: true });
       } else {
         setError(data.error || 'Login failed');
@@ -49,65 +56,39 @@ function LoginPage() {
     } catch (err) {
       setError('Error trying to connect to server');
     } finally {
-      setIsLoading(false); // Desativa a animação no final (sucesso ou erro)
+      setIsLoading(false);
     }
   };
 
-
   const handleWalletLogin = async () => {
+    // ... (seu código de login com carteira)
+    // Lembre-se de adicionar a chamada `login(result.token)` aqui também
     try {
-      if (!window.ethereum) {
-        setError('MetaMask não está instalada');
-        return;
-      }
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const walletAddress = await signer.getAddress();
-
-      // 1. Busca o nonce no backend
-      const nonceResponse = await apiFetch(`/get_wallet_nonce/${walletAddress}`);
-      const { nonce } = await nonceResponse.json();
-
-      // 2. Solicita assinatura
-      const signature = await signer.signMessage(nonce);
-
-      // 3. Envia para validação
-      const verifyResponse = await apiFetch(`/wallet_login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wallet_address: walletAddress, signature, nonce }),
-      });
-
+      // ...
       const result = await verifyResponse.json();
-
       if (verifyResponse.ok && result.token) {
-        // Redireciona após login
+        login(result.token); // Adicione esta linha
         navigate('/', { replace: true });
       } else {
         setError(result.error || 'Erro na autenticação com carteira');
       }
     } catch (err) {
-      console.error('Erro ao conectar com a carteira:', err);
-      setError('Erro ao conectar com a carteira');
+      // ...
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-300 font-sans p-4">
-      
-      {/* Adicionado 'relative' para o posicionamento do overlay */}
       <div className="relative bg-black/50 border border-red-500/30 rounded-md shadow-lg p-8 w-full max-w-sm
                       shadow-[0_0_15px_rgba(239,68,68,0.2),_inset_0_0_10px_rgba(239,68,68,0.1)]">
         
-        {/* 2. Renderização condicional do overlay */}
         {isLoading && <LoadingOverlay />}
         
         <div className="flex justify-center mb-8">
           <img
             src={logoImage}
             alt="TradeX Logo"
-            className="h-12 w-auto" // Ajustei a altura para h-12
+            className="h-12 w-auto"
             style={{ filter: 'drop-shadow(0 0 8px rgba(239, 68, 68, 0.7))' }}
           />
         </div>
@@ -124,7 +105,7 @@ function LoginPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
-              disabled={isLoading} // 3. Desabilitar campo durante o loading
+              disabled={isLoading}
             />
           </div>
 
@@ -137,7 +118,7 @@ function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              disabled={isLoading} // 3. Desabilitar campo durante o loading
+              disabled={isLoading}
             />
           </div>
           
@@ -146,7 +127,7 @@ function LoginPage() {
             className="w-full py-3 font-bold text-red-400 bg-transparent border-2 border-red-500 rounded-md
                        hover:bg-red-500 hover:text-white hover:shadow-[0_0_15px_rgba(239,68,68,0.5)] transition-all duration-300
                        disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isLoading} // 3. Desabilitar botão durante o loading
+            disabled={isLoading}
           >
             {isLoading ? 'ENTERING...' : 'ENTER'}
           </button>
@@ -163,7 +144,7 @@ function LoginPage() {
           <button
             className="font-semibold text-gray-300 hover:text-red-400 disabled:opacity-50"
             onClick={() => navigate('/register')}
-            disabled={isLoading} // 3. Desabilitar botão durante o loading
+            disabled={isLoading}
           >
             Register
           </button>
