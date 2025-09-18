@@ -14,6 +14,7 @@ function ApiKeysPage() {
   const [selectedKey, setSelectedKey] = useState(null);
   const tutorialUrl = import.meta.env.VITE_TUTORIAL_URL;
   const apiKeyHeaders = ["ID", "Name", "Exchange", "Actions"];
+  const [deleteError, setDeleteError] = useState(null);
 
   const [highlightedKeyId, setHighlightedKeyId] = useState(null);
 
@@ -68,18 +69,39 @@ function ApiKeysPage() {
     onError: () => alert('Error editing API Key'),
   });
 
-  const removeMutation = useMutation({
-    mutationFn: (apiKeyId) => apiFetch(`/remove_user_apikey`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_key_id: apiKeyId }),
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user_apikeys'] });
+const removeMutation = useMutation({
+    mutationFn: async (apiKeyId) => {
+      const response = await apiFetch(`/remove_user_apikey`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key_id: apiKeyId }),
+      });
+
+      // Se a resposta da API não for bem-sucedida (ex: status 400, 500)
+      if (!response.ok) {
+        // Lemos os dados do erro (o JSON com a mensagem) e os lançamos como um erro.
+        // Isso vai forçar o useMutation a chamar o callback 'onError'.
+        const errorData = await response.json();
+        throw errorData; 
+      }
+
+      // Se a resposta for bem-sucedida, apenas retornamos.
+      return response.json();
     },
-    onError: (error) => alert(error.message),
-    onSettled: () => {
-      setShowConfirmDelete(false);
+    onSuccess: () => {
+      // Este código agora só será executado em caso de sucesso real (status 200)
+      queryClient.invalidateQueries({ queryKey: ['user_apikeys'] });
+      setShowConfirmDelete(false); 
+    },
+    onError: (error) => {
+      // O 'error' que recebemos aqui é o objeto 'errorData' que lançamos acima.
+      // Verificamos se ele tem a mensagem que esperamos.
+      if (error && error.error === 'API_KEY_IN_USE') {
+        setDeleteError(error.message); 
+      } else {
+        // Caso contrário, mostramos uma mensagem de erro genérica.
+        setDeleteError(error.message || "Ocorreu um erro inesperado ao tentar deletar a chave.");
+      }
     },
   });
 
@@ -115,6 +137,7 @@ function ApiKeysPage() {
 
   const openDeleteConfirm = (apiKey) => {
     setSelectedKey(apiKey);
+    setDeleteError(null);
     setShowConfirmDelete(true);
   };
 
@@ -208,16 +231,35 @@ function ApiKeysPage() {
       {showConfirmDelete && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 animate-fade-in">
           <div className="bg-gray-900 p-8 rounded-lg shadow-lg text-center max-w-sm w-full border border-red-500/30">
-            <h3 className="text-xl font-semibold text-white mb-4">Confirm Deletion</h3>
-            <p className="text-slate-300 mb-2">Do you really want to delete the key:</p>
-            <p className="text-red-400 font-bold truncate text-lg">{selectedKey?.name}</p>
-            <p className="text-gray-500 text-sm mb-6 italic truncate">ID: {selectedKey?.api_key_id}</p>
-            <div className="flex justify-center gap-4">
-              <button onClick={() => setShowConfirmDelete(false)} className={`${buttonSecondaryStyle} border-gray-600`}>Cancel</button>
-              <button onClick={handleDeleteKey} disabled={removeMutation.isLoading} className={`${buttonPrimaryStyle} bg-red-600 hover:bg-red-700`}>
-                Confirm
-              </button>
-            </div>
+            
+            {/* Se NÃO houver erro, mostra a confirmação normal */}
+            {!deleteError ? (
+              <>
+                <h3 className="text-xl font-semibold text-white mb-4">Confirm Deletion</h3>
+                <p className="text-slate-300 mb-2">Do you really want to delete the key:</p>
+                <p className="text-red-400 font-bold truncate text-lg">{selectedKey?.name}</p>
+                <p className="text-gray-500 text-sm mb-6 italic truncate">ID: {selectedKey?.api_key_id}</p>
+                <div className="flex justify-center gap-4">
+                  <button onClick={() => setShowConfirmDelete(false)} className={`${buttonSecondaryStyle} border-gray-600`}>Cancel</button>
+                  <button onClick={handleDeleteKey} disabled={removeMutation.isLoading} className={`${buttonPrimaryStyle} bg-red-600 hover:bg-red-700`}>
+                    {removeMutation.isLoading ? 'Deleting...' : 'Confirm'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* Se HOUVER erro, mostra a mensagem de erro */
+              <>
+                <h3 className="text-xl font-semibold text-red-500 mb-4">Deletion Failed</h3>
+                {/* Exibe a mensagem de erro que foi guardada no estado */}
+                <p className="text-slate-300 mb-6">{deleteError}</p>
+                <div className="flex justify-center">
+                  <button onClick={() => setShowConfirmDelete(false)} className={`${buttonPrimaryStyle} bg-gray-600 hover:bg-gray-700`}>
+                    Close
+                  </button>
+                </div>
+              </>
+            )}
+
           </div>
         </div>
       )}

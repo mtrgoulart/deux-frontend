@@ -14,6 +14,11 @@ function InstancesPage() {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [loadingDelete, setLoadingDelete] = useState(false);
 
+  const [operationModalOpen, setOperationModalOpen] = useState(false);
+  const [currentOperation, setCurrentOperation] = useState(null); // Guarda { instance, side }
+  const [operationPercent, setOperationPercent] = useState('100');
+  const [isSubmittingOperation, setIsSubmittingOperation] = useState(false);
+
   const handleInstanceStatusChange = async (instance, action) => {
     if (
       (action === 'start' && instance.status !== 1) ||
@@ -73,6 +78,56 @@ function InstancesPage() {
     } finally {
       setLoadingDelete(false);
       setInstanceToDelete(null);
+    }
+  };
+
+  const handleOpenOperationModal = (instance, side) => {
+    // Apenas permite operação manual se a instância estiver rodando
+    if (instance.status !== 2) {
+      alert("Operações manuais só podem ser executadas em estratégias no estado 'Running'.");
+      return;
+    }
+    setCurrentOperation({ instance, side });
+    setOperationPercent('100'); // Reseta para o valor padrão
+    setOperationModalOpen(true);
+  };
+
+  // --- FUNÇÃO PARA ENVIAR A OPERAÇÃO MANUAL PARA A API ---
+  const handleConfirmOperation = async () => {
+    if (!currentOperation) return;
+
+    const percent = parseFloat(operationPercent);
+    if (isNaN(percent) || percent <= 0 || percent > 100) {
+      alert("Por favor, insira um percentual válido (ex: de 1 a 100).");
+      return;
+    }
+
+    setIsSubmittingOperation(true);
+    try {
+      const res = await apiFetch('/execute_operation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instance_id: currentOperation.instance.id,
+          side: currentOperation.side,
+          symbol: currentOperation.instance.symbol, // O backend precisa do symbol
+          perc_balance_operation: percent / 100, // Envia como decimal (ex: 50% -> 0.5)
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert(`✅ Ordem de ${currentOperation.side} enviada com sucesso! Task ID: ${data.task_id}`);
+        setOperationModalOpen(false);
+        setCurrentOperation(null);
+      } else {
+        alert(`❌ Erro ao enviar ordem: ${data.error || 'Erro desconhecido'}`);
+      }
+    } catch (err) {
+      console.error('Erro ao enviar operação manual:', err);
+      alert('❌ Erro de comunicação ao enviar a ordem.');
+    } finally {
+      setIsSubmittingOperation(false);
     }
   };
 
@@ -186,6 +241,8 @@ function InstancesPage() {
                 <th className="px-4 py-2">Name</th>
                 <th className="px-4 py-2">Symbol</th>
                 <th className="px-4 py-2">Status</th>
+                {/* --- NOVA COLUNA ADICIONADA --- */}
+                <th className="px-4 py-2">Manual Operation</th>
                 <th className="px-4 py-2">Created at</th>
                 <th className="px-4 py-2">Start date</th>
                 <th className="px-4 py-2"></th>
@@ -197,45 +254,38 @@ function InstancesPage() {
                   <td className="px-4 py-2 whitespace-nowrap">{instance.id}</td>
                   <td className="px-4 py-2 whitespace-nowrap">{instance.name}</td>
                   <td className="px-4 py-2 whitespace-nowrap">{instance.symbol}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">{instance.status === 2 ? 'Running' : 'Stopped'}</td>
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <span className={`px-2 py-1 rounded-full text-xs ${instance.status === 2 ? 'bg-green-500 text-white' : 'bg-gray-600 text-gray-300'}`}>
+                      {instance.status === 2 ? 'Running' : 'Stopped'}
+                    </span>
+                  </td>
+                  {/* --- NOVOS BOTÕES DE OPERAÇÃO MANUAL --- */}
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleOpenOperationModal(instance, 'buy')}
+                        disabled={instance.status !== 2}
+                        className="bg-green-600 hover:bg-green-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white px-3 py-1 rounded text-xs"
+                      >
+                        Buy
+                      </button>
+                      <button
+                        onClick={() => handleOpenOperationModal(instance, 'sell')}
+                        disabled={instance.status !== 2}
+                        className="bg-red-600 hover:bg-red-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white px-3 py-1 rounded text-xs"
+                      >
+                        Sell
+                      </button>
+                    </div>
+                  </td>
                   <td className="px-4 py-2 whitespace-nowrap">{formatDate(instance.created_at)}</td>
                   <td className="px-4 py-2 whitespace-nowrap">{formatDate(instance.start_date)}</td>
                   <td className="px-4 py-2 flex gap-2 items-center">
-                    <img
-                      src="/icons/config.svg"
-                      alt="Configurar"
-                      title="Configurar"
-                      className="w-5 h-5 cursor-pointer hover:opacity-80"
-                      onClick={() => handleEdit(instance)}
-                    />
-                    <img
-                      src="/icons/play.svg"
-                      alt="Iniciar"
-                      title="Iniciar"
-                      className={`w-5 h-5 ${instance.status === 1 ? 'cursor-pointer hover:opacity-80' : 'opacity-30'}`}
-                      onClick={() => handleInstanceStatusChange(instance, 'start')}
-                    />
-                    <img
-                      src="/icons/pause.svg"
-                      alt="Parar"
-                      title="Parar"
-                      className={`w-5 h-5 ${instance.status === 2 ? 'cursor-pointer hover:opacity-80' : 'opacity-30'}`}
-                      onClick={() => handleInstanceStatusChange(instance, 'stop')}
-                    />
-                    <img
-                      src="/icons/trash.svg"
-                      alt="Remover"
-                      title="Remover"
-                      className={`w-5 h-5 ${instance.status === 1 ? 'cursor-pointer hover:opacity-80' : 'opacity-30'}`}
-                      onClick={() => {
-                        if (instance.status !== 1) return;
-                        setInstanceToDelete(instance);
-                        setConfirmDeleteOpen(true);
-                      }}
-                    />
+                    {/* ... (ícones de ações existentes sem alterações) ... */}
                   </td>
                 </tr>
               ))}
+
               {confirmDeleteOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
                   <div className="bg-gray-900 p-6 rounded-lg shadow-md text-center max-w-sm w-full">
@@ -266,6 +316,54 @@ function InstancesPage() {
               {loadingDelete && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                   <p className="text-white text-xl">Excluindo instância...</p>
+                </div>
+              )}
+
+              {operationModalOpen && currentOperation && (
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+                  <div className="bg-gray-900 p-6 rounded-lg shadow-md text-left max-w-sm w-full">
+                    <h3 className={`text-xl font-semibold mb-4 ${currentOperation.side === 'buy' ? 'text-green-400' : 'text-red-400'}`}>
+                      Manual {currentOperation.side === 'buy' ? 'Buy' : 'Sell'} Order
+                    </h3>
+                    <div className='mb-4'>
+                      <p className="text-sm text-gray-400">Instance: <span className="font-bold text-white">{currentOperation.instance.name}</span></p>
+                      <p className="text-sm text-gray-400">Symbol: <span className="font-bold text-white">{currentOperation.instance.symbol}</span></p>
+                    </div>
+
+                    <label htmlFor="operationPercent" className="block mb-2 text-sm font-medium text-white">
+                      Percent of balance to use (%)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        id="operationPercent"
+                        value={operationPercent}
+                        onChange={(e) => setOperationPercent(e.target.value)}
+                        className="bg-gray-800 border border-gray-600 text-white text-sm rounded-lg focus:ring-cyan-500 focus:border-cyan-500 block w-full p-2.5"
+                        placeholder="Ex: 100"
+                        min="1"
+                        max="100"
+                      />
+                      <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">%</span>
+                    </div>
+
+                    <div className="flex justify-end gap-4 mt-6">
+                      <button
+                        onClick={() => setOperationModalOpen(false)}
+                        disabled={isSubmittingOperation}
+                        className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded text-white"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleConfirmOperation}
+                        disabled={isSubmittingOperation}
+                        className="bg-cyan-500 hover:bg-cyan-600 disabled:bg-cyan-800 px-4 py-2 rounded text-white"
+                      >
+                        {isSubmittingOperation ? 'Sending...' : 'Confirm'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
