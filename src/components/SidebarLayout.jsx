@@ -1,30 +1,38 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import logoImage from '../assets/logo.png';
 import { useAuth } from '../context/AuthContext';
 
-// Ícone de chevron
 const ChevronRightIcon = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
     <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
   </svg>
 );
 
-// Estrutura de dados para os links com a nova ordem
-const navSections = {
+// Estrutura de dados com as novas seções, rotas e permissões
+const navSectionsConfig = {
   administration: {
     title: 'Administration',
+    allowedGroups: ['Admin'],
     links: [
         { path: '/users', label: 'Users' },
     ]
   },
-  operacao: {
-    title: 'Operation',
+  automation: {
+    title: 'Automation',
+    allowedGroups: ['Admin', 'Developer'], // Permissão a nível de seção
     links: [
-      { path: '/apikeys', label: '1 - API Keys' },
-      { path: '/strategies', label: '2 - Configuration' },
-      { path: '/', label: '3 - Strategy' },
-      { path: '/indicators', label: '4 - Indicators' },
+      { path: '/automation/configuration', label: 'Configuration' },
+      { path: '/automation/strategy', label: 'Strategy' },
+      { path: '/automation/indicators', label: 'Indicators' },
+    ]
+  },
+  copy: {
+    title: 'Copy',
+    links: [
+      { path: '/copy', label: 'Create', allowedGroups: ['Admin', 'Developer'] },
+      { path: '/copy/explore', label: 'Explore' },
+      { path: '/copy/subscriptions', label: 'Subscriptions' },
     ],
   },
   mercado: {
@@ -33,11 +41,17 @@ const navSections = {
       { path: '/signals', label: 'Signals' },
       { path: '/operations', label: 'Operations' },
       { path: '/sharing', label: 'Sharing' },
-      { path: '/subscriptions', label: 'Subscriptions' },
     ],
+  },
+  user: {
+    title: 'User',
+    links: [
+        { path: '/user/apikeys', label: 'API Keys' },
+    ]
   },
   development: {
     title: 'Development',
+    allowedGroups: ['Admin', 'Developer'],
     links: [
       { path: '/send-signal', label: 'Send Signal' },
     ],
@@ -49,9 +63,30 @@ function SidebarLayout() {
   const location = useLocation();
   const { user, logout } = useAuth();
 
+  const accessibleNavSections = useMemo(() => {
+    const userGroup = user?.group;
+    if (!userGroup) return {};
+
+    return Object.entries(navSectionsConfig).reduce((acc, [key, section]) => {
+      if (section.allowedGroups && !section.allowedGroups.includes(userGroup)) {
+        return acc;
+      }
+
+      const accessibleLinks = section.links.filter(link => 
+        !link.allowedGroups || link.allowedGroups.includes(userGroup)
+      );
+
+      if (accessibleLinks.length > 0) {
+        acc[key] = { ...section, links: accessibleLinks };
+      }
+      
+      return acc;
+    }, {});
+  }, [user]);
+
   const findInitialOpenSection = () => {
-    for (const sectionKey in navSections) {
-      if (navSections[sectionKey].links.some(link => link.path === location.pathname)) {
+    for (const sectionKey in accessibleNavSections) {
+      if (accessibleNavSections[sectionKey].links.some(link => location.pathname.startsWith(link.path) && link.path !== '/')) {
         return [sectionKey];
       }
     }
@@ -93,13 +128,8 @@ function SidebarLayout() {
           </Link>
           
           <nav className="flex flex-col space-y-2">
-            {Object.entries(navSections).map(([key, section]) => {
-              if (key === 'administration' && user?.group !== 'Admin') {
-                return null;
-              }
-
+            {Object.entries(accessibleNavSections).map(([key, section]) => {
               const isOpen = openSections.includes(key);
-
               return (
                 <div key={key}>
                   <button

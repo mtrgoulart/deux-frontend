@@ -4,6 +4,7 @@ import { apiFetch } from '../utils/api';
 
 export function UserEditModal({ user, onClose }) {
   const queryClient = useQueryClient();
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     username: '',
     email: '', // Campo de e-mail adicionado
@@ -32,10 +33,11 @@ export function UserEditModal({ user, onClose }) {
       queryClient.invalidateQueries(['users']);
       onClose();
     },
-    onError: (error) => {
-      console.error("Failed to update user:", error);
-    }
-  });
+    onError: async (error) => {
+    const errorData = await error.response.json();
+    setError(errorData.error || 'Failed to update user.');
+  }
+});
 
   const handleChange = (e) => {
     const { name, value } = e.target;
