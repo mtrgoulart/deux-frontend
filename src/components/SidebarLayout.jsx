@@ -41,6 +41,7 @@ const navSectionsConfig = {
       { path: '/signals', label: 'Signals' },
       { path: '/operations', label: 'Operations' },
       { path: '/sharing', label: 'Sharing' },
+      { path: '/market/data', label: 'Market Data' }
     ],
   },
   user: {

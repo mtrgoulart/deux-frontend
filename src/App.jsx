@@ -19,6 +19,7 @@ import UsersPage from './pages/UsersPage';
 import CopyCreatePage from './pages/CopyCreatePage';
 import ExplorePage from './pages/CopyExplorePage';
 import CopySubscriptionPage from './pages/CopySubscriptionPage';
+import MarketChartPage from './pages/MarketChartPage';
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
             <Route index element={<HomePage />} />
             
             {/* Rotas Públicas para usuários logados */}
+            <Route path="/market/data" element={<MarketChartPage />} />
             <Route path="sharing" element={<SharingPage />} />
             <Route path="signals" element={<SignalsPage />} />
             <Route path="operations" element={<OperationsPage />} />
