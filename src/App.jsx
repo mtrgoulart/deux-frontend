@@ -14,6 +14,7 @@ import SignalsPage from './pages/SignalsPage';
 import IndicatorsPage from './pages/IndicatorsPage';
 import SharingPage from './pages/SharingPage';
 import OperationsPage from './pages/OperationsPage';
+import PnLPage from './pages/PnLPage';
 import SendSignalPage from './pages/SendSignalPage';
 import UsersPage from './pages/UsersPage';
 import CopyCreatePage from './pages/CopyCreatePage';
@@ -40,6 +41,7 @@ function App() {
             <Route path="sharing" element={<SharingPage />} />
             <Route path="signals" element={<SignalsPage />} />
             <Route path="operations" element={<OperationsPage />} />
+            <Route path="pnl" element={<PnLPage />} />
             <Route path="copy/explore" element={<ExplorePage />} />
             <Route path="copy/subscriptions" element={<CopySubscriptionPage />} />
             

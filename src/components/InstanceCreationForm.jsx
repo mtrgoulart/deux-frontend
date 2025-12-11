@@ -17,10 +17,18 @@ function SavingOverlay({ isSaving }) {
 
 function StrategyDetailsCard({ strategy, onClear }) {
   if (!strategy) return null;
-  const formattedPercent = ((percentValue) => {
-    const num = parseFloat(percentValue);
-    return !isNaN(num) ? `${num * 100}%` : 'N/A';
-  })(strategy.percent);
+
+  // Determine sizing mode (default to 'percentage' for backward compatibility)
+  const sizeMode = strategy.size_mode || 'percentage';
+  const isFlatValue = sizeMode === 'flat_value';
+
+  // Format the sizing value based on mode
+  const formattedSizing = isFlatValue
+    ? `$${parseFloat(strategy.flat_value || 0).toFixed(2)}`
+    : ((percentValue) => {
+        const num = parseFloat(percentValue);
+        return !isNaN(num) ? `${num * 100}%` : 'N/A';
+      })(strategy.percent);
 
   return (
     // Adicionamos a classe 'animate-fade-in' que já tínhamos definido no CSS
@@ -35,10 +43,11 @@ function StrategyDetailsCard({ strategy, onClear }) {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+        {/* Sizing Mode - shows either Percent or Flat Value */}
         <div className="bg-gray-800 p-2 rounded">
-          <p className="text-gray-400">Operation Percent</p>
-        <p className="font-semibold text-white">
-            {formattedPercent}
+          <p className="text-gray-400">{isFlatValue ? 'Flat Value' : 'Operation Percent'}</p>
+          <p className="font-semibold text-white">
+            {formattedSizing}
           </p>
         </div>
         <div className="bg-gray-800 p-2 rounded">

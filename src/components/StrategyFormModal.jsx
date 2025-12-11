@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 const initialFormState = {
   id: '', name: '', side: '', strategy: '', percent: '',
   condition_limit: '', interval: '', simultaneous_operations: '',
+  size_mode: 'percentage', flat_value: '',
 };
 
 export function StrategyFormModal({ isOpen, onClose, onSave, initialData, formErrors = {} }) {
@@ -57,11 +58,57 @@ export function StrategyFormModal({ isOpen, onClose, onSave, initialData, formEr
             <label className="text-sm text-gray-400">UUID</label>
             <input value={strategy.strategy} readOnly className="w-full p-2 mt-1 rounded bg-gray-800/50 text-white opacity-60 cursor-not-allowed border border-gray-700" />
           </div>
-          {/* ✅ Labels do formulário traduzidos */}
+
+          {/* Size Mode Selection */}
+          <div className="col-span-2">
+            <label className="text-sm text-gray-400">Sizing Mode</label>
+            <select
+              name="size_mode"
+              value={strategy.size_mode || 'percentage'}
+              onChange={handleChange}
+              className={`w-full p-2 mt-1 rounded bg-gray-800 text-white border ${formErrors.size_mode ? 'border-red-500' : 'border-gray-700'} focus:ring-1 focus:ring-red-500 focus:border-red-500`}
+            >
+              <option value="percentage">Percentage of Balance</option>
+              <option value="flat_value">Flat Value (Fixed Amount)</option>
+            </select>
+            {formErrors.size_mode && <p className="text-red-500 text-xs mt-1">{formErrors.size_mode}</p>}
+          </div>
+
+          {/* Conditional rendering based on size_mode */}
+          {strategy.size_mode === 'percentage' ? (
+            <div>
+              <label className="text-sm text-gray-400">Percent (%)</label>
+              <input
+                type="number"
+                name="percent"
+                value={strategy.percent || ''}
+                onChange={handleChange}
+                className={`w-full p-2 mt-1 rounded bg-gray-800 text-white border ${formErrors.percent ? 'border-red-500' : 'border-gray-700'} focus:ring-1 focus:ring-red-500 focus:border-red-500`}
+                placeholder="e.g., 10 for 10%"
+              />
+              {formErrors.percent && <p className="text-red-500 text-xs mt-1">{formErrors.percent}</p>}
+              <p className="text-xs text-gray-500 mt-1">Percentage of account balance to trade</p>
+            </div>
+          ) : (
+            <div>
+              <label className="text-sm text-gray-400">Flat Value ($)</label>
+              <input
+                type="number"
+                name="flat_value"
+                value={strategy.flat_value || ''}
+                onChange={handleChange}
+                className={`w-full p-2 mt-1 rounded bg-gray-800 text-white border ${formErrors.flat_value ? 'border-red-500' : 'border-gray-700'} focus:ring-1 focus:ring-red-500 focus:border-red-500`}
+                placeholder="e.g., 500"
+              />
+              {formErrors.flat_value && <p className="text-red-500 text-xs mt-1">{formErrors.flat_value}</p>}
+              <p className="text-xs text-gray-500 mt-1">Exact dollar amount to trade</p>
+            </div>
+          )}
+
+          {/* Other fields */}
           {[
-            { key: 'percent', label: 'Percent (%)' }, 
             { key: 'condition_limit', label: 'Condition Limit' },
-            { key: 'interval', label: 'Interval (min)' }, 
+            { key: 'interval', label: 'Interval (min)' },
             { key: 'simultaneous_operations', label: 'Simultaneous Ops' },
           ].map(({ key, label }) => (
             <div key={key}>

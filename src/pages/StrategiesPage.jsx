@@ -11,13 +11,33 @@ import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal';
 // ✅ Função de validação com mensagem em inglês
 const validateStrategy = (strategy) => {
   const errors = {};
-  const requiredFields = ['name', 'side', 'percent', 'condition_limit', 'interval', 'simultaneous_operations'];
-  
-  requiredFields.forEach(field => {
+  const baseRequiredFields = ['name', 'side', 'condition_limit', 'interval', 'simultaneous_operations'];
+
+  // Validate base required fields
+  baseRequiredFields.forEach(field => {
     if (!strategy[field] && strategy[field] !== 0) {
       errors[field] = 'Field is required.';
     }
   });
+
+  // Validate size mode specific fields
+  const sizeMode = strategy.size_mode || 'percentage';
+
+  if (sizeMode === 'percentage') {
+    // Percentage mode: percent is required
+    if (!strategy.percent && strategy.percent !== 0) {
+      errors.percent = 'Percent is required for percentage mode.';
+    } else if (parseFloat(strategy.percent) <= 0 || parseFloat(strategy.percent) > 100) {
+      errors.percent = 'Percent must be between 0 and 100.';
+    }
+  } else if (sizeMode === 'flat_value') {
+    // Flat value mode: flat_value is required
+    if (!strategy.flat_value && strategy.flat_value !== 0) {
+      errors.flat_value = 'Flat value is required for flat value mode.';
+    } else if (parseFloat(strategy.flat_value) <= 0) {
+      errors.flat_value = 'Flat value must be greater than 0.';
+    }
+  }
 
   return errors;
 }
@@ -100,7 +120,10 @@ function StrategiesPage() {
       if (res.ok) {
         const formattedData = {
           ...data,
-          percent: data.percent * 100,
+          // Convert percent from decimal to percentage if in percentage mode
+          percent: data.size_mode === 'percentage' && data.percent ? data.percent * 100 : data.percent,
+          // Ensure size_mode defaults to 'percentage' for backward compatibility
+          size_mode: data.size_mode || 'percentage',
         };
         setEditingStrategy(formattedData);
         setIsFormOpen(true);
@@ -126,15 +149,28 @@ function StrategiesPage() {
 
     setFormErrors({});
 
+    const sizeMode = strategyFromForm.size_mode || 'percentage';
+
+    // Build payload based on size mode
     const payload = {
       ...strategyFromForm,
       id: strategyFromForm.id || undefined,
-      percent: parseFloat(strategyFromForm.percent) / 100,
+      size_mode: sizeMode,
     };
-    
+
+    if (sizeMode === 'percentage') {
+      // Convert percentage from 0-100 to 0-1 decimal
+      payload.percent = parseFloat(strategyFromForm.percent) / 100;
+      payload.flat_value = null; // Ensure flat_value is null
+    } else {
+      // flat_value mode
+      payload.flat_value = parseFloat(strategyFromForm.flat_value);
+      payload.percent = 0; // Set percent to 0 when not used
+    }
+
     const mutation = strategyFromForm.id ? updateMutation : saveMutation;
     await mutation.mutateAsync(payload);
-    
+
     setIsFormOpen(false);
   };
 

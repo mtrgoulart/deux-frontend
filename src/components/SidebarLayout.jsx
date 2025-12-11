@@ -40,6 +40,7 @@ const navSectionsConfig = {
     links: [
       { path: '/signals', label: 'Signals' },
       { path: '/operations', label: 'Operations' },
+      { path: '/pnl', label: 'P&L' },
       { path: '/sharing', label: 'Sharing' },
       { path: '/market/data', label: 'Market Data' }
     ],
