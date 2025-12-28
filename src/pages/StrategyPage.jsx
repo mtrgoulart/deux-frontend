@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../utils/api';
 import InstanceCreationForm from '../components/InstanceCreationForm';
 
-function InstancesPage() {
+function StrategyPage() {
   const queryClient = useQueryClient();
   const [selectedApiKey, setSelectedApiKey] = useState(localStorage.getItem('selectedApiKey') || '');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -392,10 +392,10 @@ function InstancesPage() {
             </div>
           </div>
           <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-red-700 tracking-wider uppercase mb-2">
-            Loading Instances
+            Loading Strategies
           </h2>
           <p className="text-gray-600 font-mono text-sm tracking-wide">
-            [FETCHING INSTANCE DATA...]
+            [FETCHING STRATEGY DATA...]
           </p>
         </div>
       </div>
@@ -416,7 +416,7 @@ function InstancesPage() {
                   Instances
                 </h1>
                 <p className="text-gray-500 text-sm mt-1 font-mono tracking-wide">
-                  STRATEGY CONTROL // {filteredInstances.length} INSTANCES CONFIGURED
+                  ACTIVE CONTROL // {filteredInstances.length} STRATEGIES DEPLOYED
                 </p>
               </div>
             </div>
@@ -656,7 +656,7 @@ function InstancesPage() {
                   <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  Add Instance
+                  Add Strategy
                 </button>
                 <button
                   onClick={() => {
@@ -676,7 +676,7 @@ function InstancesPage() {
               <div className="mt-3 flex items-center gap-2 text-xs text-gray-600 font-mono">
                 <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
                 <span className="uppercase tracking-wider">
-                  Showing {filteredInstances.length} of {instances.length} instances
+                  Showing {filteredInstances.length} of {instances.length} strategies
                 </span>
               </div>
             </div>
@@ -688,7 +688,7 @@ function InstancesPage() {
           <div className="flex items-center gap-3 mb-4">
             <div className="w-8 h-px bg-red-500"></div>
             <h2 className="text-xl font-bold text-red-500 uppercase tracking-wider font-mono">
-              ◆ Instance Registry
+              ◆ Strategy Registry
             </h2>
             <div className="flex-1 h-px bg-red-900/30"></div>
           </div>
@@ -711,7 +711,7 @@ function InstancesPage() {
                     <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-900"></div>
                   </div>
                   <span className="text-sm font-mono text-red-500 uppercase tracking-wider">
-                    Active Strategies
+                    Deployed Strategies
                   </span>
                 </div>
               </div>
@@ -737,8 +737,8 @@ function InstancesPage() {
                         <td colSpan="8" className="px-6 py-12 text-center">
                           <div className="text-gray-600 font-mono text-sm">
                             {instances.length === 0
-                              ? '[NO INSTANCES FOUND]'
-                              : '[NO INSTANCES MATCH FILTERS]'
+                              ? '[NO STRATEGIES FOUND]'
+                              : '[NO STRATEGIES MATCH FILTERS]'
                             }
                           </div>
                         </td>
@@ -945,7 +945,7 @@ function InstancesPage() {
 
               <h3 className="text-xl font-semibold text-red-500 font-mono uppercase tracking-wider">Confirm Deletion</h3>
               <p className="text-gray-300 my-4 font-mono">
-                Do you really want to delete the instance:
+                Do you really want to delete the strategy:
                 <br />
                 <strong className="text-red-400">ID: {instanceToDelete?.id || '--'}</strong>
                 <br />
@@ -1155,7 +1155,7 @@ function InstancesPage() {
             <div className="flex flex-col items-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mb-4"></div>
               <p className="text-white text-xl font-mono">
-                {statusMessage || (loadingDelete && "Deleting instance...") || panicStatusMessage || resumeStatusMessage}
+                {statusMessage || (loadingDelete && "Deleting strategy...") || panicStatusMessage || resumeStatusMessage}
               </p>
             </div>
           </div>
@@ -1165,4 +1165,4 @@ function InstancesPage() {
   );
 }
 
-export default InstancesPage;
+export default StrategyPage;

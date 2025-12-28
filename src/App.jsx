@@ -7,8 +7,8 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import SidebarLayout from './components/SidebarLayout';
 import HomePage from './pages/HomePage'; // Importa a nova Home Page
-import InstancesPage from './pages/InstancesPage';
-import StrategiesPage from './pages/StrategiesPage';
+import StrategyPage from './pages/StrategyPage';
+import ConfigurationPage from './pages/ConfigurationPage';
 import ApiKeysPage from './pages/APIKeysPage';
 import SignalsPage from './pages/SignalsPage';
 import IndicatorsPage from './pages/IndicatorsPage';
@@ -50,8 +50,8 @@ function App() {
 
             {/* Rotas apenas para Admin e Developer */}
             <Route element={<ProtectedRoute allowedGroups={['Admin', 'Developer']} />}>
-              <Route path="/automation/configuration" element={<StrategiesPage />} />
-              <Route path="/automation/strategy" element={<InstancesPage />} />
+              <Route path="/automation/configuration" element={<ConfigurationPage />} />
+              <Route path="/automation/strategy" element={<StrategyPage />} />
               <Route path="/automation/indicators" element={<IndicatorsPage />} />
               <Route path="copy" element={<CopyCreatePage />} />
               <Route path="send-signal" element={<SendSignalPage />} />

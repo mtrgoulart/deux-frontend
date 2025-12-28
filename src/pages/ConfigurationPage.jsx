@@ -34,13 +34,17 @@ const validateStrategy = (strategy) => {
   return errors;
 }
 
-function StrategiesPage() {
+function ConfigurationPage() {
   const queryClient = useQueryClient();
 
   // Filter states
   const [nameFilter, setNameFilter] = useState('');
   const [sideFilter, setSideFilter] = useState('all');
   const [sizeModeFilter, setSizeModeFilter] = useState('all');
+
+  // Sorting states
+  const [sortField, setSortField] = useState('id');
+  const [sortDirection, setSortDirection] = useState('asc');
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -68,7 +72,7 @@ function StrategiesPage() {
     },
     onError: (error) => {
         console.error("Mutation failed", error);
-        alert("An error occurred while saving the strategy.");
+        alert("An error occurred while saving the configuration.");
     }
   };
 
@@ -97,20 +101,80 @@ function StrategiesPage() {
     });
   }, [strategies, nameFilter, sideFilter, sizeModeFilter]);
 
-  // Paginate filtered strategies
+  // Sort strategies
+  const sortedStrategies = useMemo(() => {
+    const sorted = [...filteredStrategies];
+    sorted.sort((a, b) => {
+      let aVal = a[sortField];
+      let bVal = b[sortField];
+
+      // Handle special cases
+      if (sortField === 'size_mode') {
+        aVal = a.size_mode || 'percentage';
+        bVal = b.size_mode || 'percentage';
+      }
+
+      // Handle numeric fields
+      if (sortField === 'id' || sortField === 'condition_limit') {
+        aVal = Number(aVal) || 0;
+        bVal = Number(bVal) || 0;
+      }
+
+      // Handle string fields
+      if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [filteredStrategies, sortField, sortDirection]);
+
+  // Paginate sorted strategies
   const paginatedStrategies = useMemo(() => {
     const startIndex = (currentPage - 1) * recordsPerPage;
     const endIndex = startIndex + recordsPerPage;
-    return filteredStrategies.slice(startIndex, endIndex);
-  }, [filteredStrategies, currentPage, recordsPerPage]);
+    return sortedStrategies.slice(startIndex, endIndex);
+  }, [sortedStrategies, currentPage, recordsPerPage]);
 
   // Calculate total pages
-  const totalPages = Math.ceil(filteredStrategies.length / recordsPerPage);
+  const totalPages = Math.ceil(sortedStrategies.length / recordsPerPage);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [nameFilter, sideFilter, sizeModeFilter]);
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) {
+      return (
+        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+        </svg>
+      );
+    }
+    return sortDirection === 'asc' ? (
+      <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+      </svg>
+    ) : (
+      <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+      </svg>
+    );
+  };
 
   const handleAdd = () => {
     setEditingStrategy(null);
@@ -133,10 +197,10 @@ function StrategiesPage() {
         setEditingStrategy(formattedData);
         setIsFormOpen(true);
       } else {
-        alert(data.error || "Could not load the strategy data.");
+        alert(data.error || "Could not load the configuration data.");
       }
     } catch (error) {
-      console.error("Error configuring strategy:", error);
+      console.error("Error loading configuration:", error);
       alert("A network error occurred. Please try again.");
     } finally {
       setIsLoadingParameters(false);
@@ -202,10 +266,10 @@ function StrategiesPage() {
             </div>
           </div>
           <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-red-700 tracking-wider uppercase mb-2">
-            Loading Strategies
+            Loading Configurations
           </h2>
           <p className="text-gray-600 font-mono text-sm tracking-wide">
-            [FETCHING STRATEGY DATA...]
+            [FETCHING CONFIGURATION DATA...]
           </p>
         </div>
       </div>
@@ -220,29 +284,31 @@ function StrategiesPage() {
       <div className="relative border-b border-red-900/50 bg-black/40 backdrop-blur-sm">
         <div className="absolute inset-0 bg-gradient-to-r from-red-900/10 via-transparent to-red-900/10"></div>
         <div className="container mx-auto px-4 md:px-6 py-8 relative">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-1 h-16 bg-gradient-to-b from-red-500 to-red-900"></div>
               <div>
                 <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-red-400 to-red-600 tracking-wider uppercase">
-                  Strategies
+                  Configuration
                 </h1>
                 <p className="text-gray-500 text-sm mt-1 font-mono tracking-wide">
-                  CONFIGURATION // {filteredStrategies.length} STRATEGIES AVAILABLE
+                  STRATEGY SETTINGS // {filteredStrategies.length} CONFIGURATIONS AVAILABLE
                 </p>
               </div>
             </div>
-            {/* Add Strategy Button */}
+            {/* Add Configuration Button - Improved */}
             <button
               onClick={handleAdd}
-              className="hidden md:flex items-center gap-2 px-6 py-3 bg-gradient-to-br from-green-900/30 to-green-800/30 border border-green-500/30 text-green-400 rounded font-mono text-sm uppercase tracking-wider
-                       hover:bg-green-900/50 hover:border-green-500/50 transition-all duration-300
-                       focus:outline-none focus:ring-2 focus:ring-green-500/20"
+              className="group relative flex items-center gap-3 px-8 py-4 bg-gradient-to-br from-green-600 to-green-700 text-white rounded-lg font-bold text-base uppercase tracking-wider
+                       shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transition-all duration-300
+                       hover:scale-105 hover:from-green-500 hover:to-green-600
+                       focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:ring-offset-2 focus:ring-offset-black
+                       border-2 border-green-400/50 hover:border-green-300"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
               </svg>
-              Add Strategy
+              <span>Add Configuration</span>
             </button>
           </div>
           {/* Tech decoration lines */}
@@ -382,19 +448,19 @@ function StrategiesPage() {
               <div className="mt-3 flex items-center gap-2 text-xs text-gray-600 font-mono">
                 <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
                 <span className="uppercase tracking-wider">
-                  Showing {filteredStrategies.length} of {strategies.length} strategies
+                  Showing {filteredStrategies.length} of {strategies.length} configurations
                 </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Strategies Table */}
+        {/* Configurations Table */}
         <div>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-8 h-px bg-red-500"></div>
             <h2 className="text-xl font-bold text-red-500 uppercase tracking-wider font-mono">
-              ◆ Strategy Configuration
+              ◆ Configuration Database
             </h2>
             <div className="flex-1 h-px bg-red-900/30"></div>
           </div>
@@ -417,7 +483,7 @@ function StrategiesPage() {
                     <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-900"></div>
                   </div>
                   <span className="text-sm font-mono text-red-500 uppercase tracking-wider">
-                    Strategy Database
+                    Configuration Registry
                   </span>
                 </div>
               </div>
@@ -427,23 +493,54 @@ function StrategiesPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-red-900/30 bg-black/20">
-                      <th className="px-6 py-4 text-left text-xs font-bold text-red-500 uppercase tracking-wider font-mono">ID</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-red-500 uppercase tracking-wider font-mono">Name</th>
+                      <th
+                        onClick={() => handleSort('id')}
+                        className="px-6 py-4 text-left text-xs font-bold text-red-500 uppercase tracking-wider font-mono cursor-pointer hover:bg-red-900/20 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          ID
+                          <SortIcon field="id" />
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('name')}
+                        className="px-6 py-4 text-left text-xs font-bold text-red-500 uppercase tracking-wider font-mono cursor-pointer hover:bg-red-900/20 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          Name
+                          <SortIcon field="name" />
+                        </div>
+                      </th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-red-500 uppercase tracking-wider font-mono">Side</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-red-500 uppercase tracking-wider font-mono">Condition</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-red-500 uppercase tracking-wider font-mono">Interval</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-red-500 uppercase tracking-wider font-mono">Size Mode</th>
+                      <th
+                        onClick={() => handleSort('condition_limit')}
+                        className="px-6 py-4 text-left text-xs font-bold text-red-500 uppercase tracking-wider font-mono cursor-pointer hover:bg-red-900/20 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          Condition
+                          <SortIcon field="condition_limit" />
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('size_mode')}
+                        className="px-6 py-4 text-left text-xs font-bold text-red-500 uppercase tracking-wider font-mono cursor-pointer hover:bg-red-900/20 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          Size Mode
+                          <SortIcon field="size_mode" />
+                        </div>
+                      </th>
                       <th className="px-6 py-4 text-right text-xs font-bold text-red-500 uppercase tracking-wider font-mono">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-red-900/20">
                     {paginatedStrategies.length === 0 ? (
                       <tr>
-                        <td colSpan="7" className="px-6 py-12 text-center">
+                        <td colSpan="6" className="px-6 py-12 text-center">
                           <div className="text-gray-600 font-mono text-sm">
                             {strategies.length === 0
-                              ? '[NO STRATEGIES FOUND]'
-                              : '[NO STRATEGIES MATCH FILTERS]'
+                              ? '[NO CONFIGURATIONS FOUND]'
+                              : '[NO CONFIGURATIONS MATCH FILTERS]'
                             }
                           </div>
                         </td>
@@ -467,10 +564,7 @@ function StrategiesPage() {
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 font-mono">
-                            {strategy.condition_limit}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 font-mono">
-                            {strategy.interval}s
+                            {strategy.condition_limit || '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 font-mono">
                             {(strategy.size_mode || 'percentage') === 'percentage' ? 'Percentage' : 'Flat Value'}
@@ -515,7 +609,7 @@ function StrategiesPage() {
                       <span className="text-red-400 font-bold">
                         {Math.min(currentPage * recordsPerPage, filteredStrategies.length)}
                       </span>{' '}
-                      of <span className="text-red-400 font-bold">{filteredStrategies.length}</span> strategies
+                      of <span className="text-red-400 font-bold">{filteredStrategies.length}</span> configurations
                     </div>
 
                     {/* Pagination buttons */}
@@ -583,4 +677,4 @@ function StrategiesPage() {
   );
 }
 
-export default StrategiesPage;
+export default ConfigurationPage;
