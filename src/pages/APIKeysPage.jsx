@@ -1,25 +1,29 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../utils/api';
 import { AddApiKeyForm } from '../components/AddApiKeyForm';
 import { EditApiKeyModal } from '../components/EditApiKeyModal';
-import { TableSkeleton } from '../components/TableSkeleton';
+import { ConfirmDeleteApiKeyModal } from '../components/ConfirmDeleteApiKeyModal';
 import { FullScreenLoader } from '../components/FullScreenLoader';
+import Pagination from '../components/Pagination';
+import TradingBarsLoader from '../components/TradingBarsLoader';
 
 function ApiKeysPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [selectedKey, setSelectedKey] = useState(null);
-  const tutorialUrl = import.meta.env.VITE_TUTORIAL_URL;
-  const apiKeyHeaders = ["ID", "Name", "Exchange", "Actions"];
   const [deleteError, setDeleteError] = useState(null);
-
   const [highlightedKeyId, setHighlightedKeyId] = useState(null);
 
-  // --- LÓGICA RESTAURADA ---
-  const { data: apiKeys, isLoading: loadingApiKeys } = useQuery({
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 25;
+
+  const { data: apiKeys = [], isLoading: loadingApiKeys } = useQuery({
     queryKey: ['user_apikeys'],
     queryFn: async () => {
       const response = await apiFetch(`/get_user_apikeys`);
@@ -33,9 +37,17 @@ function ApiKeysPage() {
     queryFn: async () => {
       const response = await apiFetch(`/get_exchanges`);
       const data = await response.json();
-      return data.exchanges || []; // Garante que nunca retorne undefined
+      return data.exchanges || [];
     },
   });
+
+  // Pagination logic
+  const paginatedKeys = useMemo(() => {
+    const startIndex = (currentPage - 1) * recordsPerPage;
+    return apiKeys.slice(startIndex, startIndex + recordsPerPage);
+  }, [apiKeys, currentPage, recordsPerPage]);
+
+  const totalPages = Math.ceil(apiKeys.length / recordsPerPage);
 
   const addMutation = useMutation({
     mutationFn: (newKeyData) => apiFetch(`/save_user_apikey`, {
@@ -50,7 +62,7 @@ function ApiKeysPage() {
       });
       setShowAddForm(false);
     },
-    onError: () => alert("Error saving credentials."),
+    onError: () => alert(t('apiKeys.errors.saveError')),
   });
 
   const editMutation = useMutation({
@@ -66,46 +78,35 @@ function ApiKeysPage() {
       });
       setShowEditModal(false);
     },
-    onError: () => alert('Error editing API Key'),
+    onError: () => alert(t('apiKeys.errors.editError')),
   });
 
-const removeMutation = useMutation({
+  const removeMutation = useMutation({
     mutationFn: async (apiKeyId) => {
       const response = await apiFetch(`/remove_user_apikey`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ api_key_id: apiKeyId }),
       });
-
-      // Se a resposta da API não for bem-sucedida (ex: status 400, 500)
       if (!response.ok) {
-        // Lemos os dados do erro (o JSON com a mensagem) e os lançamos como um erro.
-        // Isso vai forçar o useMutation a chamar o callback 'onError'.
         const errorData = await response.json();
-        throw errorData; 
+        throw errorData;
       }
-
-      // Se a resposta for bem-sucedida, apenas retornamos.
       return response.json();
     },
     onSuccess: () => {
-      // Este código agora só será executado em caso de sucesso real (status 200)
       queryClient.invalidateQueries({ queryKey: ['user_apikeys'] });
-      setShowConfirmDelete(false); 
+      setShowConfirmDelete(false);
     },
     onError: (error) => {
-      // O 'error' que recebemos aqui é o objeto 'errorData' que lançamos acima.
-      // Verificamos se ele tem a mensagem que esperamos.
       if (error && error.error === 'API_KEY_IN_USE') {
-        setDeleteError(error.message); 
+        setDeleteError(error.message);
       } else {
-        // Caso contrário, mostramos uma mensagem de erro genérica.
-        setDeleteError(error.message || "Ocorreu um erro inesperado ao tentar deletar a chave.");
+        setDeleteError(error.message || t('apiKeys.errors.unexpectedError'));
       }
     },
   });
 
-  // --- LÓGICA RESTAURADA ---
   const handleSaveNewKey = (formData, extraParams) => {
     const additional = Object.fromEntries(extraParams.map(p => [p.key, p.value]));
     addMutation.mutate({
@@ -125,10 +126,9 @@ const removeMutation = useMutation({
 
   const handleDeleteKey = () => {
     if (selectedKey) {
-      // Chama a mutação diretamente
       removeMutation.mutate(selectedKey.api_key_id);
     }
-};
+  };
 
   const openEditModal = (apiKey) => {
     setSelectedKey(apiKey);
@@ -141,128 +141,174 @@ const removeMutation = useMutation({
     setShowConfirmDelete(true);
   };
 
-  const buttonPrimaryStyle = "px-4 py-2 font-semibold text-white rounded-md transition-all duration-300 transform focus:outline-none";
-  const buttonSecondaryStyle = `${buttonPrimaryStyle} bg-transparent border-2 border-gray-700 hover:bg-red-500 hover:border-red-500`;
+  const isMutating = addMutation.isPending || editMutation.isPending || removeMutation.isPending;
+  const loaderMessage = () => {
+    if (addMutation.isPending) return t('apiKeys.savingKey');
+    if (editMutation.isPending) return t('apiKeys.updatingKey');
+    if (removeMutation.isPending) return t('apiKeys.deletingKey');
+    return t('apiKeys.processingRequest');
+  };
 
-  let loaderMessage = '';
-  if (addMutation.isLoading) loaderMessage = 'Saving new key...';
-  if (editMutation.isLoading) loaderMessage = 'Updating key...';
-  if (removeMutation.isLoading) loaderMessage = 'Deleting key...';
+  if (loadingApiKeys) {
+    return (
+      <div className="bg-surface-primary">
+        <TradingBarsLoader title={t('apiKeys.loadingTitle')} subtitle={t('apiKeys.loadingDescription')} />
+      </div>
+    );
+  }
 
   return (
-    <div className="p-4 text-slate-200">
-      <FullScreenLoader
-        isOpen={addMutation.isLoading || editMutation.isLoading || removeMutation.isLoading}
-        message={loaderMessage}
-      />
+    <div className="min-h-screen bg-surface-primary">
+      <FullScreenLoader isOpen={isMutating} message={loaderMessage()} />
 
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-3xl font-bold text-white" style={{ textShadow: '0 0 8px rgba(239, 68, 68, 0.6)' }}>
-          API Keys
-        </h2>
-        <div className="flex items-center gap-4">
-          <a href={tutorialUrl} target="_blank" rel="noopener noreferrer" className={buttonSecondaryStyle}>
-            Tutorial
-          </a>
-          <button onClick={() => setShowAddForm(true)} className={`${buttonPrimaryStyle} bg-red-500/90 hover:bg-red-500 border border-red-500/50 hover:border-red-400 hover:-translate-y-px`} style={{ filter: 'drop-shadow(0 0 6px rgba(239, 68, 68, 0.5))' }}>
-            Add API Key
-          </button>
-        </div>
-      </div>
-
-      <AddApiKeyForm
-        isOpen={showAddForm}
-        onClose={() => setShowAddForm(false)}
-        onSave={handleSaveNewKey}
-        exchanges={exchanges}
-        isSaving={addMutation.isLoading}
-      />
-
-      {loadingApiKeys ? <TableSkeleton headers={apiKeyHeaders} /> : (
-        <div className="overflow-x-auto bg-black/50 rounded-lg border border-gray-800">
-          <table className="min-w-full table-auto">
-            <thead className='border-b border-red-500/30'>
-              <tr className="text-left text-sm font-semibold text-gray-400 uppercase tracking-wider">
-                <th className="px-6 py-4">ID</th>
-                <th className="px-6 py-4">Name</th>
-                <th className="px-6 py-4">Exchange</th>
-                <th className="px-6 py-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="text-slate-300">
-              {apiKeys?.map((key) => {
-    const isHighlighted = key.api_key_id === highlightedKeyId;
-    // A variável isDeleting e a classe animate-glitch-out foram removidas.
-    let rowClass = "border-t border-gray-800/50 hover:bg-gray-900/50 transition-colors";
-    if (isHighlighted) rowClass += ' animate-glow-success';
-
-    return (
-      <tr key={key.api_key_id} className={rowClass}>
-        {/* --- CONTEÚDO DA TABELA RESTAURADO --- */}
-        <td className="px-6 py-4 font-mono text-xs">{key.api_key_id}</td>
-        <td className="px-6 py-4">{key.name || <span className="text-gray-500 italic">Untitled</span>}</td>
-        <td className="px-6 py-4">{key.exchange_name}</td>
-        <td className="px-6 py-4">
-          <div className="flex gap-4 justify-end">
-            <button onClick={() => openEditModal(key)} className="hover:opacity-80 transition-opacity" title="Configure">
-             <img src="/icons/config.svg" alt="Configure" className="w-7 h-7" />
-            </button>
-            <button onClick={() => openDeleteConfirm(key)} className="hover:opacity-80 transition-opacity" title="Remove">
-              <img src="/icons/trash.svg" alt="Remove" className="w-7 h-7" />
+      <div className="container mx-auto px-4 md:px-6 py-6">
+        {/* Header */}
+        <div className="bg-surface border border-border rounded-lg px-6 py-5 mb-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-teal-600 tracking-wider uppercase">
+              {t('apiKeys.title')}
+            </h1>
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-lg font-semibold text-sm uppercase tracking-wider
+                       transition-all duration-300
+                       focus:outline-none focus:ring-2 focus:ring-accent/50
+                       border border-accent"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>{t('apiKeys.addApiKey')}</span>
             </button>
           </div>
-        </td>
-      </tr>
-    );
-})}
-            </tbody>
-          </table>
         </div>
-      )}
+
+        {/* Add Form */}
+        <AddApiKeyForm
+          isOpen={showAddForm}
+          onClose={() => setShowAddForm(false)}
+          onSave={handleSaveNewKey}
+          exchanges={exchanges}
+          isSaving={addMutation.isPending}
+        />
+
+        {/* Table */}
+        <div className="space-y-6">
+          <div className="bg-surface border border-border rounded-lg overflow-hidden">
+            {/* Table header bar */}
+            <div className="bg-surface-raised/50 border-b border-border-subtle px-6 py-3 flex items-center justify-between">
+              <span className="text-sm text-content-accent uppercase tracking-wider">
+                {t('apiKeys.keysLabel')}
+              </span>
+            </div>
+
+            {/* Table content */}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border-subtle bg-surface-raised/30">
+                    <th className="px-6 py-4 text-left text-xs font-bold text-content-muted uppercase tracking-wider">
+                      {t('apiKeys.id')}
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-content-muted uppercase tracking-wider">
+                      {t('apiKeys.name')}
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-content-muted uppercase tracking-wider">
+                      {t('apiKeys.exchange')}
+                    </th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-content-muted uppercase tracking-wider">
+                      {t('apiKeys.actions')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-subtle">
+                  {paginatedKeys.length === 0 ? (
+                    <tr>
+                      <td colSpan="4" className="px-6 py-12 text-center">
+                        <div className="text-content-muted text-sm">
+                          {t('apiKeys.noApiKeys')}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedKeys.map((key) => {
+                      const isHighlighted = key.api_key_id === highlightedKeyId;
+                      return (
+                        <tr
+                          key={key.api_key_id}
+                          className={`hover:bg-surface-raised/30 transition-colors group ${isHighlighted ? 'animate-glow-success' : ''}`}
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-content-secondary font-mono">
+                            {key.api_key_id}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-content-primary">
+                            {key.name || <span className="text-content-muted italic">{t('apiKeys.untitled')}</span>}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-content-secondary">
+                            {key.exchange_name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right">
+                            <div className="flex items-center justify-end gap-3">
+                              <button
+                                onClick={() => openEditModal(key)}
+                                className="p-2 hover:bg-surface-raised/50 rounded transition-all duration-200 group/btn"
+                                title={t('apiKeys.configure')}
+                              >
+                                <svg className="w-5 h-5 text-content-secondary group-hover/btn:text-content-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => openDeleteConfirm(key)}
+                                className="p-2 hover:bg-surface-raised/50 rounded transition-all duration-200 group/btn"
+                                title={t('apiKeys.delete')}
+                              >
+                                <svg className="w-5 h-5 text-content-secondary group-hover/btn:text-content-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <div className="bg-surface-raised/30 border-t border-border-subtle px-6 py-4">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                itemsPerPage={recordsPerPage}
+                totalItems={apiKeys.length}
+                itemLabel={t('apiKeys.keysLabel')}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
       <EditApiKeyModal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
         onSave={handleSaveEditedKey}
         apiKeyToEdit={selectedKey}
-        isSaving={editMutation.isLoading}
+        isSaving={editMutation.isPending}
       />
 
-      {showConfirmDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 animate-fade-in">
-          <div className="bg-gray-900 p-8 rounded-lg shadow-lg text-center max-w-sm w-full border border-red-500/30">
-            
-            {/* Se NÃO houver erro, mostra a confirmação normal */}
-            {!deleteError ? (
-              <>
-                <h3 className="text-xl font-semibold text-white mb-4">Confirm Deletion</h3>
-                <p className="text-slate-300 mb-2">Do you really want to delete the key:</p>
-                <p className="text-red-400 font-bold truncate text-lg">{selectedKey?.name}</p>
-                <p className="text-gray-500 text-sm mb-6 italic truncate">ID: {selectedKey?.api_key_id}</p>
-                <div className="flex justify-center gap-4">
-                  <button onClick={() => setShowConfirmDelete(false)} className={`${buttonSecondaryStyle} border-gray-600`}>Cancel</button>
-                  <button onClick={handleDeleteKey} disabled={removeMutation.isLoading} className={`${buttonPrimaryStyle} bg-red-600 hover:bg-red-700`}>
-                    {removeMutation.isLoading ? 'Deleting...' : 'Confirm'}
-                  </button>
-                </div>
-              </>
-            ) : (
-              /* Se HOUVER erro, mostra a mensagem de erro */
-              <>
-                <h3 className="text-xl font-semibold text-red-500 mb-4">Deletion Failed</h3>
-                {/* Exibe a mensagem de erro que foi guardada no estado */}
-                <p className="text-slate-300 mb-6">{deleteError}</p>
-                <div className="flex justify-center">
-                  <button onClick={() => setShowConfirmDelete(false)} className={`${buttonPrimaryStyle} bg-gray-600 hover:bg-gray-700`}>
-                    Close
-                  </button>
-                </div>
-              </>
-            )}
-
-          </div>
-        </div>
-      )}
+      <ConfirmDeleteApiKeyModal
+        isOpen={showConfirmDelete}
+        onClose={() => setShowConfirmDelete(false)}
+        onConfirm={handleDeleteKey}
+        apiKey={selectedKey}
+        isPending={removeMutation.isPending}
+        error={deleteError}
+      />
     </div>
   );
 }

@@ -13,7 +13,8 @@ import ApiKeysPage from './pages/APIKeysPage';
 import SignalsPage from './pages/SignalsPage';
 import IndicatorsPage from './pages/IndicatorsPage';
 import OperationsPage from './pages/OperationsPage';
-import PnLPage from './pages/PnLPage';
+import PositionsPage from './pages/PositionsPage';
+
 import SendSignalPage from './pages/SendSignalPage';
 import UsersPage from './pages/UsersPage';
 import CopyCreatePage from './pages/CopyCreatePage';
@@ -41,7 +42,8 @@ function App() {
             <Route path="/market/data" element={<MarketChartPage />} />
             <Route path="signals" element={<SignalsPage />} />
             <Route path="operations" element={<OperationsPage />} />
-            <Route path="pnl" element={<PnLPage />} />
+            <Route path="positions" element={<PositionsPage />} />
+
             <Route path="copy/explore" element={<ExplorePage />} />
             <Route path="copy/details/:id" element={<CopyDetailPage />} />
             <Route path="copy/subscriptions" element={<CopySubscriptionPage />} />

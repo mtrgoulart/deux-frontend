@@ -37,7 +37,14 @@ const languages = [
   { code: 'es', label: 'ES' },
 ];
 
-function TopHeader() {
+const IconSidebarToggle = (props) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M9 3v18" />
+  </svg>
+);
+
+function TopHeader({ isCollapsed, onToggleCollapse }) {
   const { t, i18n } = useTranslation();
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
@@ -73,10 +80,24 @@ function TopHeader() {
 
   return (
     <header className="h-14 bg-surface border-b border-border flex items-center justify-between px-6 shrink-0">
-      {/* Left: Logo */}
-      <Link to="/" className="flex items-center">
-        <img src={logoImage} alt="Logo" className="h-8 w-auto" />
-      </Link>
+      {/* Left: Sidebar toggle + Logo */}
+      <div className="flex items-center gap-3">
+        {onToggleCollapse && (
+          <button
+            onClick={onToggleCollapse}
+            className={`p-1.5 rounded-md transition-colors
+              ${isCollapsed
+                ? 'text-content-accent bg-accent-muted'
+                : 'text-content-muted hover:bg-surface-raised hover:text-content-primary'
+              }`}
+          >
+            <IconSidebarToggle className="w-5 h-5" />
+          </button>
+        )}
+        <Link to="/" className="flex items-center">
+          <img src={logoImage} alt="Logo" className="h-8 w-auto" />
+        </Link>
+      </div>
 
       {/* Right: Language, Theme, User */}
       <div className="flex items-center gap-3">

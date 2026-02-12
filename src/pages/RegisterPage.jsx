@@ -1,119 +1,157 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../utils/api';
 import logoImage from '../assets/logo.png';
+import { FullScreenLoader } from '../components/FullScreenLoader';
+import AnimatedBackground from '../components/AnimatedBackground';
 
 function RegisterPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (password !== confirm) {
-      setError('Passwords do not match.');
-      return;
-    }
-
-    try {
+  const registerMutation = useMutation({
+    mutationFn: async ({ username, password }) => {
       const response = await apiFetch('/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
       const data = await response.json();
+      if (response.ok) return data;
+      throw new Error(data.error || t('auth.errors.registrationFailed'));
+    },
+    onSuccess: () => {
+      setSuccess(true);
+      setTimeout(() => navigate('/login'), 2000);
+    },
+    onError: (err) => {
+      setError(err.message || t('auth.errors.serverError'));
+    },
+  });
 
-      if (response.ok) {
-        setSuccess('Registration successful! Redirecting to login...');
-        setTimeout(() => navigate('/login'), 1500);
-      } else {
-        setError(data.error || 'Failed to register user.');
-      }
-    } catch (err) {
-      console.error('Error:', err);
-      setError('Error connecting to the server.');
+  const handleRegister = (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (password !== confirm) {
+      setError(t('auth.errors.passwordMismatch'));
+      return;
     }
+
+    registerMutation.mutate({ username, password });
   };
 
   return (
-    // Fundo principal escuro, igual ao do Login
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-300 font-sans p-4">
-      
-      {/* Painel do formulário com o mesmo efeito de brilho neon */}
-      <div className="bg-black/50 border border-red-500/30 rounded-md shadow-lg p-8 w-full max-w-sm
-                      shadow-[0_0_15px_rgba(239,68,68,0.2),_inset_0_0_10px_rgba(239,68,68,0.1)]">
-        
-        
-        <h1 className="text-xl font-light text-center text-transparent mb-8 tracking-wider [-webkit-text-stroke:1px_theme(colors.red.500)] [text-shadow:0_0_10px_theme(colors.red.500)]">
-          Create Your Account
-        </h1>
+    <div className="min-h-screen flex items-center justify-center p-4 font-sans relative">
+      <AnimatedBackground />
 
-        {/* Mensagens de erro e sucesso com o novo estilo */}
-        {error && <p className="text-red-400 text-sm mb-6 text-center bg-red-900/50 p-3 rounded-md border border-red-500/30">{error}</p>}
-        {success && <p className="text-green-400 text-sm mb-6 text-center bg-green-900/50 p-3 rounded-md border border-green-500/30">{success}</p>}
+      <FullScreenLoader
+        isOpen={registerMutation.isPending}
+        message={t('auth.creatingAccount')}
+      />
 
-        <form onSubmit={handleRegister} className="space-y-6">
-          <div>
-            <label className="block text-xs font-semibold text-gray-400 mb-2 tracking-widest">USERNAME</label>
-            <input
-              type="text"
-              className="w-full bg-gray-900/50 border-b-2 border-gray-700 text-gray-200 p-2 
-                         focus:outline-none focus:ring-0 focus:border-red-500 transition-colors"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-            />
-          </div>
+      <div className="w-full max-w-md mx-auto animate-slide-in-scale">
+        <div className="bg-surface/60 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-8">
+          {success ? (
+            <div className="flex flex-col items-center py-8 animate-fade-in">
+              <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-content-primary mb-2">
+                {t('auth.registrationSuccess')}
+              </h2>
+              <p className="text-content-muted text-sm">
+                {t('auth.redirecting')}
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="text-center mb-8">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-teal-400 to-teal-600 bg-clip-text text-transparent">
+                  {t('auth.createAccount')}
+                </h1>
+                <p className="text-content-muted text-sm mt-2">{t('auth.joinPlatform')}</p>
+              </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-400 mb-2 tracking-widest">PASSWORD</label>
-            <input
-              type="password"
-              className="w-full bg-gray-900/50 border-b-2 border-gray-700 text-gray-200 p-2 
-                         focus:outline-none focus:ring-0 focus:border-red-500 transition-colors"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
+              {error && (
+                <div className="bg-danger-muted border border-danger/30 text-danger p-3 rounded-lg mb-6 text-sm text-center">
+                  {error}
+                </div>
+              )}
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-400 mb-2 tracking-widest">CONFIRM PASSWORD</label>
-            <input
-              type="password"
-              className="w-full bg-gray-900/50 border-b-2 border-gray-700 text-gray-200 p-2 
-                         focus:outline-none focus:ring-0 focus:border-red-500 transition-colors"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              required
-            />
-          </div>
-          
-          {/* Botão de registro com o mesmo estilo do botão de login */}
-          <button
-            type="submit"
-            className="w-full py-3 font-bold text-red-400 bg-transparent border-2 border-red-500 rounded-md
-                       hover:bg-red-500 hover:text-white hover:shadow-[0_0_15px_rgba(239,68,68,0.5)] transition-all duration-300"
-          >
-            REGISTER
-          </button>
-        </form>
+              <form onSubmit={handleRegister} className="space-y-5">
+                <div>
+                  <label className="block text-xs font-semibold text-content-secondary mb-2 tracking-wide">
+                    {t('auth.username')}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={t('auth.usernamePlaceholder')}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full bg-surface-raised/50 border border-border rounded-lg py-3 px-4 text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-content-secondary mb-2 tracking-wide">
+                    {t('auth.password')}
+                  </label>
+                  <input
+                    type="password"
+                    placeholder={t('auth.passwordPlaceholder')}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-surface-raised/50 border border-border rounded-lg py-3 px-4 text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-content-secondary mb-2 tracking-wide">
+                    {t('auth.confirmPassword')}
+                  </label>
+                  <input
+                    type="password"
+                    placeholder={t('auth.confirmPasswordPlaceholder')}
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    className="w-full bg-surface-raised/50 border border-border rounded-lg py-3 px-4 text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={registerMutation.isPending}
+                  className="group relative w-full py-3 font-bold text-white bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg overflow-hidden
+                             shadow-lg shadow-accent/20 hover:shadow-accent/40
+                             hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  <span className="relative z-10">{t('auth.registerButton')}</span>
+                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-[200%] transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                </button>
+              </form>
 
-        <p className="mt-8 text-center text-gray-500 text-sm">
-          Already have an account?{' '}
-          <button
-            className="font-semibold text-gray-300 hover:text-red-400"
-            onClick={() => navigate('/login')}
-          >
-            Log in
-          </button>
-        </p>
+              <p className="text-center text-content-muted text-sm mt-6">
+                {t('auth.haveAccount')}{' '}
+                <Link
+                  to="/login"
+                  className="text-content-accent hover:text-accent font-medium transition-colors"
+                >
+                  {t('auth.loginLink')}
+                </Link>
+              </p>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

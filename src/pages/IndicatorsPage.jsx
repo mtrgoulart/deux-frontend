@@ -5,6 +5,7 @@ import { apiFetch } from '../utils/api';
 import EditIndicatorModal from '../components/EditIndicatorModal';
 import { IndicatorKeyModal } from '../components/IndicatorKeyModal';
 import TradingBarsLoader from '../components/TradingBarsLoader';
+import RefreshButton from '../components/RefreshButton';
 import Pagination from '../components/Pagination';
 
 function IndicatorsPage() {
@@ -34,7 +35,7 @@ function IndicatorsPage() {
   const [indicatorToDelete, setIndicatorToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const { data: indicators = [], isLoading } = useQuery({
+  const { data: indicators = [], isLoading, isFetching: indicatorsFetching, refetch: refetchIndicators } = useQuery({
     queryKey: ['indicators'],
     queryFn: async () => {
       const res = await apiFetch('/select_indicators_by_user');
@@ -314,9 +315,12 @@ function IndicatorsPage() {
                 <span className="text-sm font-medium text-content-secondary">
                   {t('indicator.registry')}
                 </span>
-                <span className="text-xs text-content-muted">
-                  {filteredIndicators.length} {t('indicator.indicatorsLabel')}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-content-muted">
+                    {filteredIndicators.length} {t('indicator.indicatorsLabel')}
+                  </span>
+                  <RefreshButton onClick={refetchIndicators} isRefreshing={indicatorsFetching} label={t('common.refresh')} />
+                </div>
               </div>
             </div>
 
@@ -335,7 +339,7 @@ function IndicatorsPage() {
                     <th className="px-6 py-3 text-right text-xs font-bold text-content-muted uppercase tracking-wider">{t('indicator.actions')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border-subtle">
+                <tbody className={`divide-y divide-border-subtle transition-opacity duration-300 ${indicatorsFetching && !isLoading ? 'opacity-40' : ''}`}>
                   {paginatedIndicators.length === 0 ? (
                     <tr>
                       <td colSpan="8" className="px-6 py-12 text-center">

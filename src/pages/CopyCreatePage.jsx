@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../utils/api';
 import CopyCreationForm from '../components/CopyCreationForm';
 import TradingBarsLoader from '../components/TradingBarsLoader';
+import RefreshButton from '../components/RefreshButton';
 import { FullScreenLoader } from '../components/FullScreenLoader';
 import Pagination from '../components/Pagination';
 
@@ -25,7 +26,7 @@ function CopyCreatePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 25;
 
-  const { data: copytradings = [], isLoading } = useQuery({
+  const { data: copytradings = [], isLoading, isFetching: copytradingsFetching, refetch: refetchCopytradings } = useQuery({
     queryKey: ['copytradings'],
     queryFn: async () => {
       const res = await apiFetch('/copytradings');
@@ -236,10 +237,11 @@ function CopyCreatePage() {
           {/* Table */}
           <div className="bg-surface border border-border rounded-lg overflow-hidden">
             {/* Table header bar */}
-            <div className="bg-surface-raised/50 border-b border-border-subtle px-6 py-3">
+            <div className="bg-surface-raised/50 border-b border-border-subtle px-6 py-3 flex items-center justify-between">
               <span className="text-sm text-content-secondary">
                 {t('copyCreate.registryHeader')}
               </span>
+              <RefreshButton onClick={refetchCopytradings} isRefreshing={copytradingsFetching} label={t('common.refresh')} />
             </div>
 
             <div className="overflow-x-auto">
@@ -253,7 +255,7 @@ function CopyCreatePage() {
                     <th className="px-6 py-4 text-right text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyCreate.actions')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border-subtle">
+                <tbody className={`divide-y divide-border-subtle transition-opacity duration-300 ${copytradingsFetching && !isLoading ? 'opacity-40' : ''}`}>
                   {paginatedData.length === 0 ? (
                     <tr>
                       <td colSpan="5" className="px-6 py-12 text-center">

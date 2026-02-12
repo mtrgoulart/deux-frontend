@@ -7,6 +7,7 @@ import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal';
 import { FullScreenLoader } from '../components/FullScreenLoader';
 import Pagination from '../components/Pagination';
 import TradingBarsLoader from '../components/TradingBarsLoader';
+import RefreshButton from '../components/RefreshButton';
 
 const validateStrategy = (strategy, t) => {
   const errors = {};
@@ -64,7 +65,7 @@ function ConfigurationPage() {
   const [isLoadingParameters, setIsLoadingParameters] = useState(false);
   const [formErrors, setFormErrors] = useState({});
 
-  const { data: strategies = [], isLoading: isLoadingStrategies } = useQuery({
+  const { data: strategies = [], isLoading: isLoadingStrategies, isFetching: strategiesFetching, refetch: refetchStrategies } = useQuery({
     queryKey: ['strategies'],
     queryFn: async () => {
       const res = await apiFetch('/get_strategies');
@@ -406,10 +407,11 @@ function ConfigurationPage() {
 
             <div className="bg-surface border border-border rounded-lg overflow-hidden">
               {/* Table header bar */}
-              <div className="bg-surface-raised/50 border-b border-border-subtle px-6 py-3">
+              <div className="bg-surface-raised/50 border-b border-border-subtle px-6 py-3 flex items-center justify-between">
                 <span className="text-sm text-content-accent uppercase tracking-wider">
                   {t('configuration.registry')}
                 </span>
+                <RefreshButton onClick={refetchStrategies} isRefreshing={strategiesFetching} label={t('common.refresh')} />
               </div>
 
               {/* Table content */}
@@ -461,7 +463,7 @@ function ConfigurationPage() {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border-subtle">
+                  <tbody className={`divide-y divide-border-subtle transition-opacity duration-300 ${strategiesFetching && !isLoadingStrategies ? 'opacity-40' : ''}`}>
                     {paginatedStrategies.length === 0 ? (
                       <tr>
                         <td colSpan="6" className="px-6 py-12 text-center">

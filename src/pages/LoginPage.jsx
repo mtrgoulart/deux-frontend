@@ -1,200 +1,189 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../utils/api';
 import { ethers } from 'ethers';
 import logoImage from '../assets/logo.png';
 import { useAuth } from '../context/AuthContext';
-
-const LoadingOverlay = () => (
-    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center z-10">
-        <div className="flex items-end gap-2">
-            <div className="w-2 h-4 bg-red-500 animate-pulse" style={{ animationDelay: '0ms' }}></div>
-            <div className="w-2 h-8 bg-red-500 animate-pulse" style={{ animationDelay: '150ms' }}></div>
-            <div className="w-2 h-12 bg-red-500 animate-pulse" style={{ animationDelay: '300ms' }}></div>
-            <div className="w-2 h-8 bg-red-500 animate-pulse" style={{ animationDelay: '150ms' }}></div>
-            <div className="w-2 h-4 bg-red-500 animate-pulse" style={{ animationDelay: '0ms' }}></div>
-        </div>
-        <p className="text-red-400 text-sm mt-4 tracking-widest">AUTHENTICATING...</p>
-    </div>
-);
+import { FullScreenLoader } from '../components/FullScreenLoader';
+import AnimatedBackground from '../components/AnimatedBackground';
 
 function LoginPage() {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const navigate = useNavigate();
-    const { login } = useAuth();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const { t } = useTranslation();
 
-    const handleLogin = async (e) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setError('');
-        try {
-            const response = await apiFetch('/login', {
+  const loginMutation = useMutation({
+    mutationFn: async ({ username, password }) => {
+      const response = await apiFetch('/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
-
       if (response.ok) {
         const data = await response.json();
-          if (data.token) {
-            login(data.token);
-            navigate('/');
-          } else {
-            throw new Error('Login failed: No token received.');
-          }
-        } else {
-          const errorData = await response.json().catch(() => ({ error: 'Invalid credentials' }));
-          throw new Error(errorData.error);
-        }
-        } catch (err) {
-            setError(err.message || 'Failed to login. Please check your credentials.');
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        if (data.token) return data.token;
+        throw new Error(t('auth.errors.noToken'));
+      }
+      const errorData = await response.json().catch(() => ({ error: t('auth.errors.invalidCredentials') }));
+      throw new Error(errorData.error);
+    },
+    onSuccess: (token) => {
+      login(token);
+      navigate('/');
+    },
+    onError: (err) => {
+      setError(err.message || t('auth.errors.invalidCredentials'));
+    },
+  });
 
-    const handleWalletLogin = async () => {
-      setIsLoading(true);
-      setError('');
-
+  const walletMutation = useMutation({
+    mutationFn: async () => {
       if (typeof window.ethereum === 'undefined') {
-        setError('MetaMask is not installed. Please install it to use this feature.');
-        setIsLoading(false);
-        return;
+        throw { code: 'NO_METAMASK' };
       }
-      
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        
-        const signer = await provider.getSigner();
-        const walletAddress = await signer.getAddress();
-        
-        const message = `Please sign this message to log in. Nonce: ${Date.now()}`;
-        const signature = await signer.signMessage(message);
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send('eth_requestAccounts', []);
+      const signer = await provider.getSigner();
+      const walletAddress = await signer.getAddress();
+      const message = `Please sign this message to log in. Nonce: ${Date.now()}`;
+      const signature = await signer.signMessage(message);
 
-        // <<< CORREÇÃO AQUI >>>
-        // Adicionamos "const response =" para declarar a variável
-        const response = await apiFetch('/auth/wallet-login', {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-              wallet_address: walletAddress,
-              signature: signature,
-              message: message
-          })
-        });
-
-        if (response.ok) {
-          const data = await response.json(); 
-
-          if (data.access_token) {
-            login(data.access_token);
-            navigate('/'); 
-          } else {
-            throw new Error('Login failed: No token received from server.');
-          }
-        } else {
-          const errorData = await response.json().catch(() => ({ error: 'An unknown error occurred' }));
-          throw new Error(errorData.error || 'Wallet login failed.');
-        }
-
-      } catch (err) {
-        if (err.code === 4001) {
-          setError('You rejected the connection request. Please approve it to log in.');
-        } else {
-          setError(err.message || 'An error occurred during wallet login.');
-        }
-      } finally {
-        setIsLoading(false);
+      const response = await apiFetch('/auth/wallet-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: walletAddress, signature, message }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.access_token) return data.access_token;
+        throw new Error(t('auth.errors.noToken'));
       }
-    };
+      const errorData = await response.json().catch(() => ({ error: t('auth.errors.unknownError') }));
+      throw new Error(errorData.error || t('auth.errors.walletLoginFailed'));
+    },
+    onSuccess: (token) => {
+      login(token);
+      navigate('/');
+    },
+    onError: (err) => {
+      if (err.code === 'NO_METAMASK') {
+        setError(t('auth.errors.metamaskNotInstalled'));
+      } else if (err.code === 4001) {
+        setError(t('auth.errors.walletRejected'));
+      } else {
+        setError(err.message || t('auth.errors.walletLoginFailed'));
+      }
+    },
+  });
 
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4 font-sans">
-         <div className="w-full max-w-md mx-auto relative">
-          {isLoading && <LoadingOverlay />}
-          
-          <div className="bg-black/30 backdrop-blur-lg p-8 rounded-xl shadow-2xl shadow-red-500/10 border border-red-500/20">
-              <img 
-                src={logoImage} 
-                alt="Logo" 
-                className="w-48 h-auto mx-auto mb-8"
-                style={{ filter: 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.6))' }}
-              />
-  
-            {error && <p className="bg-red-900/50 border border-red-500/30 text-red-300 p-3 rounded-md mb-6 text-sm text-center">{error}</p>}
-  
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div>
-                <input
-                  type="text"
-                  placeholder="Username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-gray-900/50 border border-gray-700 rounded-md py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500/50"
-                  required
-                />
-              </div>
-              <div>
-                <input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-gray-900/50 border border-gray-700 rounded-md py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500/50"
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full py-3 font-bold text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors duration-300 disabled:opacity-50"
-                disabled={isLoading}
-              >
-                Login
-              </button>
-            </form>
-  
-            <div className="flex items-center my-6">
-              <hr className="flex-grow border-gray-700" />
-              <span className="mx-4 text-gray-500 text-sm">OR</span>
-              <hr className="flex-grow border-gray-700" />
+  const isLoading = loginMutation.isPending || walletMutation.isPending;
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    setError('');
+    loginMutation.mutate({ username, password });
+  };
+
+  const handleWalletLogin = () => {
+    setError('');
+    walletMutation.mutate();
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 font-sans relative">
+      <AnimatedBackground />
+
+      <FullScreenLoader
+        isOpen={isLoading}
+        message={t('auth.authenticating')}
+      />
+
+      <div className="w-full max-w-md mx-auto animate-slide-in-scale">
+        <div className="bg-surface/60 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-8">
+          <img
+            src={logoImage}
+            alt={t('auth.logoAlt')}
+            className="w-48 h-auto mx-auto mb-8 animate-logo-pulse"
+          />
+
+          {error && (
+            <div className="bg-danger-muted border border-danger/30 text-danger p-3 rounded-lg mb-6 text-sm text-center">
+              {error}
             </div>
-  
-            <button
-              type="button"
-              onClick={handleWalletLogin}
-              className="w-full flex items-center justify-center gap-3 py-3 font-bold text-gray-300 bg-gray-800/50 border-2 border-gray-700 rounded-md
-                         hover:border-blue-500 hover:text-white hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all duration-300
-                         disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading}
-            >
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                <path d="M21 18V19C21 20.1 20.1 21 19 21H5C3.9 21 3 20.1 3 19V5C3 3.9 3.9 3 5 3H19C20.1 3 21 3.9 21 5V6H12C10.9 6 10 6.9 10 8V16C10 17.1 10.9 18 12 18H21ZM12 16H22V8H12V16ZM15 15C15.6 15 16 14.6 16 14C16 13.4 15.6 13 15 13C14.4 13 14 13.4 14 14C14 14.6 14.4 15 15 15Z"/>
-              </svg>
-              Login with Wallet
-            </button>
+          )}
 
-            <p className="text-center text-gray-400 text-sm mt-6">
-              Don't have an account?{' '}
-              <Link
-                to="/register"
-                className="text-red-400 hover:text-red-300 font-medium transition-colors"
-              >
-                Register
-              </Link>
-            </p>
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div>
+              <input
+                type="text"
+                placeholder={t('auth.usernamePlaceholder')}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full bg-surface-raised/50 border border-border rounded-lg py-3 px-4 text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
+                required
+              />
+            </div>
+            <div>
+              <input
+                type="password"
+                placeholder={t('auth.passwordPlaceholder')}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-surface-raised/50 border border-border rounded-lg py-3 px-4 text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="group relative w-full py-3 font-bold text-white bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg overflow-hidden
+                         shadow-lg shadow-accent/20 hover:shadow-accent/40
+                         hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none"
+            >
+              <span className="relative z-10">{t('auth.loginButton')}</span>
+              <div className="absolute inset-0 -translate-x-full group-hover:translate-x-[200%] transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+            </button>
+          </form>
+
+          <div className="flex items-center my-6">
+            <hr className="flex-grow border-border" />
+            <span className="mx-4 text-content-muted text-sm">{t('auth.or')}</span>
+            <hr className="flex-grow border-border" />
           </div>
+
+          <button
+            type="button"
+            onClick={handleWalletLogin}
+            disabled={isLoading}
+            className="w-full flex items-center justify-center gap-3 py-3 font-bold text-content-secondary bg-surface-raised/50 border-2 border-border rounded-lg
+                       hover:border-accent hover:text-content-primary hover:shadow-lg hover:shadow-accent/20
+                       hover:scale-[1.02] active:scale-[0.98] transition-all duration-200
+                       disabled:opacity-50 disabled:pointer-events-none"
+          >
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21 18V19C21 20.1 20.1 21 19 21H5C3.9 21 3 20.1 3 19V5C3 3.9 3.9 3 5 3H19C20.1 3 21 3.9 21 5V6H12C10.9 6 10 6.9 10 8V16C10 17.1 10.9 18 12 18H21ZM12 16H22V8H12V16ZM15 15C15.6 15 16 14.6 16 14C16 13.4 15.6 13 15 13C14.4 13 14 13.4 14 14C14 14.6 14.4 15 15 15Z"/>
+            </svg>
+            {t('auth.walletLogin')}
+          </button>
+
+          <p className="text-center text-content-muted text-sm mt-6">
+            {t('auth.noAccount')}{' '}
+            <Link
+              to="/register"
+              className="text-content-accent hover:text-accent font-medium transition-colors"
+            >
+              {t('auth.registerLink')}
+            </Link>
+          </p>
         </div>
       </div>
-    );
+    </div>
+  );
 }
 
 export default LoginPage;

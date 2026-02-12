@@ -8,6 +8,7 @@ import { useDateRangeFilter } from '../hooks/useDateRangeFilter';
 import Pagination from '../components/Pagination';
 import DateRangeFilter from '../components/DateRangeFilter';
 import TradingBarsLoader from '../components/TradingBarsLoader';
+import RefreshButton from '../components/RefreshButton';
 
 function OperationsPage() {
     const { t } = useTranslation();
@@ -38,7 +39,7 @@ function OperationsPage() {
     });
 
     // Fetch operations data
-    const { data: operations = [], isLoading: operationsLoading } = useQuery({
+    const { data: operations = [], isLoading: operationsLoading, isFetching: operationsFetching, refetch: refetchOperations } = useQuery({
         queryKey: ['dashboard-operations'],
         queryFn: async () => {
             const response = await apiFetch('/dashboard/operations');
@@ -396,10 +397,11 @@ function OperationsPage() {
 
                     <div className="bg-surface border border-border rounded-lg overflow-hidden">
                         {/* Table header bar */}
-                        <div className="bg-surface-raised/50 border-b border-border-subtle px-6 py-3">
+                        <div className="bg-surface-raised/50 border-b border-border-subtle px-6 py-3 flex items-center justify-between">
                             <span className="text-sm text-content-accent">
                                 {t('operations.executionLog')}
                             </span>
+                            <RefreshButton onClick={refetchOperations} isRefreshing={operationsFetching} label={t('common.refresh')} />
                         </div>
 
                         {/* Table content */}
@@ -416,7 +418,7 @@ function OperationsPage() {
                                         <th className="px-6 py-4 text-center text-xs font-semibold text-content-muted uppercase tracking-wider">{t('operations.status')}</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-border-subtle">
+                                <tbody className={`divide-y divide-border-subtle transition-opacity duration-300 ${operationsFetching && !operationsLoading ? 'opacity-40' : ''}`}>
                                     {paginatedOperations.length === 0 ? (
                                         <tr>
                                             <td colSpan="7" className="px-6 py-12 text-center">

@@ -6,6 +6,7 @@ import { useDateRangeFilter } from '../hooks/useDateRangeFilter';
 import Pagination from '../components/Pagination';
 import DateRangeFilter from '../components/DateRangeFilter';
 import TradingBarsLoader from '../components/TradingBarsLoader';
+import RefreshButton from '../components/RefreshButton';
 
 function SignalsPage() {
     const { t } = useTranslation();
@@ -32,7 +33,7 @@ function SignalsPage() {
     });
 
     // Fetch all signals in one shot (backend ignores offset/limit)
-    const { data: allSignals = [], isLoading } = useQuery({
+    const { data: allSignals = [], isLoading, isFetching: signalsFetching, refetch: refetchSignals } = useQuery({
         queryKey: ['signals'],
         queryFn: async () => {
             const response = await apiFetch('/get_signals_data');
@@ -221,10 +222,11 @@ function SignalsPage() {
 
                     <div className="bg-surface border border-border rounded-lg overflow-hidden">
                         {/* Table header bar */}
-                        <div className="bg-surface-raised/50 border-b border-border-subtle px-6 py-3">
+                        <div className="bg-surface-raised/50 border-b border-border-subtle px-6 py-3 flex items-center justify-between">
                             <span className="text-sm text-content-accent">
                                 {t('signals.signalLog')}
                             </span>
+                            <RefreshButton onClick={refetchSignals} isRefreshing={signalsFetching} label={t('common.refresh')} />
                         </div>
 
                         {/* Table content */}
@@ -241,7 +243,7 @@ function SignalsPage() {
                                         <th className="px-6 py-4 text-left text-xs font-semibold text-content-muted uppercase tracking-wider">{t('signals.instance')}</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-border-subtle">
+                                <tbody className={`divide-y divide-border-subtle transition-opacity duration-300 ${signalsFetching && !isLoading ? 'opacity-40' : ''}`}>
                                     {paginatedSignals.length === 0 ? (
                                         <tr>
                                             <td colSpan="7" className="px-6 py-12 text-center">

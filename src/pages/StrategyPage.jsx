@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../utils/api';
 import InstanceCreationForm from '../components/InstanceCreationForm';
 import TradingBarsLoader from '../components/TradingBarsLoader';
+import RefreshButton from '../components/RefreshButton';
 import { FullScreenLoader } from '../components/FullScreenLoader';
 import Pagination from '../components/Pagination';
 import { InstanceDeleteModal } from '../components/InstanceDeleteModal';
@@ -255,7 +256,7 @@ function StrategyPage() {
     },
   });
 
-  const { data: instances = [], isLoading } = useQuery({
+  const { data: instances = [], isLoading, isFetching: instancesFetching, refetch: refetchInstances } = useQuery({
     queryKey: ['instances', selectedApiKey],
     queryFn: async () => {
       const res = await apiFetch(`/get_instances?api_key_id=${selectedApiKey}`);
@@ -504,10 +505,11 @@ function StrategyPage() {
           {/* Instance Table */}
           <div className="bg-surface border border-border rounded-lg overflow-hidden">
             {/* Table header bar */}
-            <div className="bg-surface-raised/50 border-b border-border-subtle px-6 py-3">
+            <div className="bg-surface-raised/50 border-b border-border-subtle px-6 py-3 flex items-center justify-between">
               <span className="text-sm text-content-secondary">
                 {t('instance.registryHeader')}
               </span>
+              <RefreshButton onClick={refetchInstances} isRefreshing={instancesFetching} label={t('common.refresh')} />
             </div>
 
             <div className="overflow-x-auto">
@@ -524,7 +526,7 @@ function StrategyPage() {
                     <th className="px-6 py-4 text-right text-xs font-bold text-content-muted uppercase tracking-wider">{t('instance.actions')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border-subtle">
+                <tbody className={`divide-y divide-border-subtle transition-opacity duration-300 ${instancesFetching && !isLoading ? 'opacity-40' : ''}`}>
                   {paginatedInstances.length === 0 ? (
                     <tr>
                       <td colSpan="8" className="px-6 py-12 text-center">
