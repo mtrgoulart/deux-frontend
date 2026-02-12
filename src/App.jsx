@@ -12,15 +12,16 @@ import ConfigurationPage from './pages/ConfigurationPage';
 import ApiKeysPage from './pages/APIKeysPage';
 import SignalsPage from './pages/SignalsPage';
 import IndicatorsPage from './pages/IndicatorsPage';
-import SharingPage from './pages/SharingPage';
 import OperationsPage from './pages/OperationsPage';
 import PnLPage from './pages/PnLPage';
 import SendSignalPage from './pages/SendSignalPage';
 import UsersPage from './pages/UsersPage';
 import CopyCreatePage from './pages/CopyCreatePage';
 import ExplorePage from './pages/CopyExplorePage';
+import CopyDetailPage from './pages/CopyDetailPage';
 import CopySubscriptionPage from './pages/CopySubscriptionPage';
 import MarketChartPage from './pages/MarketChartPage';
+import WalletPage from './pages/WalletPage';
 
 function App() {
   return (
@@ -38,15 +39,16 @@ function App() {
             
             {/* Rotas Públicas para usuários logados */}
             <Route path="/market/data" element={<MarketChartPage />} />
-            <Route path="sharing" element={<SharingPage />} />
             <Route path="signals" element={<SignalsPage />} />
             <Route path="operations" element={<OperationsPage />} />
             <Route path="pnl" element={<PnLPage />} />
             <Route path="copy/explore" element={<ExplorePage />} />
+            <Route path="copy/details/:id" element={<CopyDetailPage />} />
             <Route path="copy/subscriptions" element={<CopySubscriptionPage />} />
             
-            {/* Nova rota de usuário */}
+            {/* Rotas de usuário */}
             <Route path="/user/apikeys" element={<ApiKeysPage />} />
+            <Route path="/user/wallet" element={<WalletPage />} />
 
             {/* Rotas apenas para Admin e Developer */}
             <Route element={<ProtectedRoute allowedGroups={['Admin', 'Developer']} />}>

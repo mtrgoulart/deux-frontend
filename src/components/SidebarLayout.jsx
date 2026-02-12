@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
-import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import logoImage from '../assets/logo.png';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
+import TopHeader from './TopHeader';
 
 const ChevronRightIcon = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
@@ -9,61 +10,60 @@ const ChevronRightIcon = (props) => (
   </svg>
 );
 
-// Estrutura de dados com as novas seções, rotas e permissões
 const navSectionsConfig = {
   administration: {
-    title: 'Administration',
+    titleKey: 'nav.administration',
     allowedGroups: ['Admin'],
     links: [
-        { path: '/users', label: 'Users' },
+        { path: '/users', labelKey: 'nav.users' },
     ]
   },
   automation: {
-    title: 'Automation',
-    allowedGroups: ['Admin', 'Developer'], // Permissão a nível de seção
+    titleKey: 'nav.automation',
+    allowedGroups: ['Admin', 'Developer'],
     links: [
-      { path: '/automation/configuration', label: 'Configuration' },
-      { path: '/automation/strategy', label: 'Strategy' },
-      { path: '/automation/indicators', label: 'Indicators' },
+      { path: '/automation/configuration', labelKey: 'nav.configuration' },
+      { path: '/automation/strategy', labelKey: 'nav.strategy' },
+      { path: '/automation/indicators', labelKey: 'nav.indicators' },
     ]
   },
   copy: {
-    title: 'Copy',
+    titleKey: 'nav.copy',
     links: [
-      { path: '/copy', label: 'Create', allowedGroups: ['Admin', 'Developer'] },
-      { path: '/copy/explore', label: 'Explore' },
-      { path: '/copy/subscriptions', label: 'Subscriptions' },
+      { path: '/copy', labelKey: 'nav.create', allowedGroups: ['Admin', 'Developer'] },
+      { path: '/copy/explore', labelKey: 'nav.explore' },
+      { path: '/copy/subscriptions', labelKey: 'nav.subscriptions' },
     ],
   },
   mercado: {
-    title: 'Visualization',
+    titleKey: 'nav.visualization',
     links: [
-      { path: '/signals', label: 'Signals' },
-      { path: '/operations', label: 'Operations' },
-      { path: '/pnl', label: 'P&L' },
-      { path: '/sharing', label: 'Sharing' },
-      { path: '/market/data', label: 'Market Data' }
+      { path: '/signals', labelKey: 'nav.signals' },
+      { path: '/operations', labelKey: 'nav.operations' },
+      { path: '/pnl', labelKey: 'nav.pnl' },
+      { path: '/market/data', labelKey: 'nav.marketData' }
     ],
   },
   user: {
-    title: 'User',
+    titleKey: 'nav.user',
     links: [
-        { path: '/user/apikeys', label: 'API Keys' },
+        { path: '/user/apikeys', labelKey: 'nav.apiKeys' },
+        { path: '/user/wallet', labelKey: 'nav.wallet' },
     ]
   },
   development: {
-    title: 'Development',
+    titleKey: 'nav.development',
     allowedGroups: ['Admin', 'Developer'],
     links: [
-      { path: '/send-signal', label: 'Send Signal' },
+      { path: '/send-signal', labelKey: 'nav.sendSignal' },
     ],
   }
 };
 
 function SidebarLayout() {
-  const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const { t } = useTranslation();
 
   const accessibleNavSections = useMemo(() => {
     const userGroup = user?.group;
@@ -74,14 +74,14 @@ function SidebarLayout() {
         return acc;
       }
 
-      const accessibleLinks = section.links.filter(link => 
+      const accessibleLinks = section.links.filter(link =>
         !link.allowedGroups || link.allowedGroups.includes(userGroup)
       );
 
       if (accessibleLinks.length > 0) {
         acc[key] = { ...section, links: accessibleLinks };
       }
-      
+
       return acc;
     }, {});
   }, [user]);
@@ -97,13 +97,8 @@ function SidebarLayout() {
 
   const [openSections, setOpenSections] = useState(findInitialOpenSection);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login', { replace: true });
-  };
-  
   const toggleSection = (sectionKey) => {
-    setOpenSections(prevOpenSections => 
+    setOpenSections(prevOpenSections =>
       prevOpenSections.includes(sectionKey)
         ? prevOpenSections.filter(key => key !== sectionKey)
         : [...prevOpenSections, sectionKey]
@@ -112,23 +107,16 @@ function SidebarLayout() {
 
   const getLinkClass = (path) => {
     return location.pathname === path
-      ? 'bg-slate-700 text-white'
-      : 'text-slate-400 hover:bg-slate-700/50 hover:text-white';
+      ? 'bg-accent-muted text-content-accent'
+      : 'text-content-secondary hover:bg-surface-raised hover:text-content-primary';
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-950 font-sans">
-      <aside className="w-64 bg-black/80 backdrop-blur-sm p-6 flex flex-col justify-between border-r border-red-500/30">
-        <div>
-          <Link to="/">
-            <img 
-              src={logoImage} 
-              alt="TradeX Logo" 
-              className="w-40 h-auto mx-auto mb-10"
-              style={{ filter: 'drop-shadow(0 0 8px rgba(239, 68, 68, 0.5))' }}
-            />
-          </Link>
-          
+    <div className="flex flex-col min-h-screen bg-surface-primary font-sans">
+      <TopHeader />
+
+      <div className="flex flex-1 overflow-hidden">
+        <aside className="w-64 bg-surface backdrop-blur-sm p-6 flex flex-col border-r border-border overflow-y-auto">
           <nav className="flex flex-col space-y-2">
             {Object.entries(accessibleNavSections).map(([key, section]) => {
               const isOpen = openSections.includes(key);
@@ -136,27 +124,27 @@ function SidebarLayout() {
                 <div key={key}>
                   <button
                     onClick={() => toggleSection(key)}
-                    className="w-full flex items-center justify-between text-left py-2 px-4 rounded-md hover:bg-gray-800 focus:outline-none"
+                    className="w-full flex items-center justify-between text-left py-2 px-4 rounded-md hover:bg-surface-raised focus:outline-none"
                   >
-                    <span className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
-                      {section.title}
+                    <span className="text-sm font-semibold text-content-secondary uppercase tracking-wider">
+                      {t(section.titleKey)}
                     </span>
                     <ChevronRightIcon
-                      className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${isOpen ? 'rotate-90' : ''}`}
+                      className={`w-5 h-5 text-content-muted transition-transform duration-300 ${isOpen ? 'rotate-90' : ''}`}
                     />
                   </button>
-                  
+
                   <div
                     className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'max-h-96 mt-2' : 'max-h-0'}`}
                   >
-                    <ul className="space-y-1 border-l border-gray-800 ml-4">
+                    <ul className="space-y-1 border-l border-border-subtle ml-4">
                       {section.links.map((link) => (
                         <li key={link.path} className="pl-2">
                           <Link
                             to={link.path}
                             className={`block w-full py-2 px-3 rounded-r-md text-sm transition-colors duration-200 ${getLinkClass(link.path)}`}
                           >
-                            {link.label}
+                            {t(link.labelKey)}
                           </Link>
                         </li>
                       ))}
@@ -166,20 +154,12 @@ function SidebarLayout() {
               );
             })}
           </nav>
-        </div>
+        </aside>
 
-        <button
-          onClick={handleLogout}
-          className="mt-6 w-full py-2 font-semibold text-gray-400 bg-transparent border-2 border-gray-700 rounded-md
-                     hover:bg-red-500 hover:border-red-500 hover:text-white transition-all duration-300"
-        >
-          Logout
-        </button>
-      </aside>
-
-      <main className="flex-1 p-8 bg-gray-950/70 overflow-y-auto">
-        <Outlet />
-      </main>
+        <main className="flex-1 p-8 bg-surface-primary overflow-y-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

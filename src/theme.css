@@ -1,0 +1,83 @@
+:root {
+  /* Primitive palette */
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+  --color-slate-950: #020617;
+
+  --color-teal-300: #5eead4;
+  --color-teal-400: #2dd4bf;
+  --color-teal-500: #14b8a6;
+  --color-teal-600: #0d9488;
+  --color-teal-700: #0f766e;
+  --color-teal-900: #134e4a;
+
+  /* Semantic tokens */
+  --bg-primary: var(--color-slate-950);
+  --bg-surface: var(--color-slate-900);
+  --bg-surface-raised: var(--color-slate-800);
+  --bg-overlay: rgba(2, 6, 23, 0.8);
+
+  --border-default: var(--color-slate-700);
+  --border-subtle: var(--color-slate-800);
+  --border-accent: var(--color-teal-500);
+
+  --text-primary: var(--color-slate-50);
+  --text-secondary: var(--color-slate-400);
+  --text-muted: var(--color-slate-500);
+  --text-accent: var(--color-teal-400);
+
+  --accent: var(--color-teal-500);
+  --accent-hover: var(--color-teal-400);
+  --accent-muted: rgba(20, 184, 166, 0.15);
+
+  --success: #4ade80;
+  --success-muted: rgba(74, 222, 128, 0.15);
+  --danger: #f87171;
+  --danger-muted: rgba(248, 113, 113, 0.15);
+  --warning: #fbbf24;
+  --warning-muted: rgba(251, 191, 36, 0.15);
+}
+
+html.light {
+  --bg-primary: var(--color-slate-100);
+  --bg-surface: #ffffff;
+  --bg-surface-raised: var(--color-slate-50);
+  --bg-overlay: rgba(241, 245, 249, 0.8);
+
+  --border-default: var(--color-slate-300);
+  --border-subtle: var(--color-slate-200);
+  --border-accent: var(--color-teal-600);
+
+  --text-primary: var(--color-slate-900);
+  --text-secondary: var(--color-slate-600);
+  --text-muted: var(--color-slate-400);
+  --text-accent: var(--color-teal-700);
+
+  --accent: var(--color-teal-600);
+  --accent-hover: var(--color-teal-500);
+  --accent-muted: rgba(13, 148, 136, 0.1);
+
+  --success: #16a34a;
+  --success-muted: rgba(22, 163, 74, 0.1);
+  --danger: #dc2626;
+  --danger-muted: rgba(220, 38, 38, 0.1);
+  --warning: #d97706;
+  --warning-muted: rgba(217, 119, 6, 0.1);
+}
+
+/* Table row hover — accent left border */
+tbody tr.group > td:first-child {
+  border-left: 2px solid transparent;
+  transition: border-color 150ms;
+}
+tbody tr.group:hover > td:first-child {
+  border-left-color: var(--accent);
+}

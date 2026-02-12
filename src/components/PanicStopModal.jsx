@@ -1,7 +1,6 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-export function ConfirmDeleteModal({ isOpen, onClose, onConfirm, strategy }) {
+export function PanicStopModal({ isOpen, onClose, onConfirm }) {
   const { t } = useTranslation();
 
   if (!isOpen) return null;
@@ -19,37 +18,21 @@ export function ConfirmDeleteModal({ isOpen, onClose, onConfirm, strategy }) {
             </div>
           </div>
 
-          {/* Content */}
           <div className="text-center mb-8">
-            <h3 className="text-2xl font-bold text-content-primary tracking-wider uppercase mb-4">
-              {t('configuration.confirmDeletion')}
+            <h3 className="text-2xl font-bold text-danger tracking-wider uppercase mb-4">
+              {t('instance.panicModalTitle')}
             </h3>
-            <p className="text-content-secondary text-sm mb-4">
-              {t('configuration.deleteConfirmMessage')}
+            <p className="text-content-primary text-sm mb-4">
+              {t('instance.panicModalDescription')}
             </p>
-
-            {/* Configuration Info */}
-            <div className="bg-surface-raised/50 border border-border-subtle rounded-lg p-4 mb-2">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-content-muted uppercase tracking-wider">{t('configuration.name')}</span>
-                <span className="text-content-primary font-bold" title={strategy?.name}>
-                  {strategy?.name || t('configuration.noName')}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-content-muted uppercase tracking-wider">{t('configuration.id')}</span>
-                <span className="text-content-secondary font-mono">
-                  {strategy?.id || '--'}
-                </span>
-              </div>
-            </div>
-
-            <p className="text-xs text-warning mt-4">
-              {t('configuration.cannotUndo')}
+            <p className="text-content-muted text-xs mb-4 italic">
+              {t('instance.panicModalNote')}
+            </p>
+            <p className="text-content-primary text-sm">
+              {t('instance.panicModalConfirmQuestion')}
             </p>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex gap-4">
             <button
               onClick={onClose}
@@ -57,7 +40,7 @@ export function ConfirmDeleteModal({ isOpen, onClose, onConfirm, strategy }) {
                        hover:bg-surface-raised/80 hover:text-content-primary transition-all duration-300
                        focus:outline-none focus:ring-2 focus:ring-accent/20"
             >
-              {t('configuration.cancel')}
+              {t('instance.panicModalCancel')}
             </button>
             <button
               onClick={onConfirm}
@@ -65,7 +48,7 @@ export function ConfirmDeleteModal({ isOpen, onClose, onConfirm, strategy }) {
                        border border-danger/50 transition-all duration-300
                        focus:outline-none focus:ring-2 focus:ring-danger/50 focus:ring-offset-2 focus:ring-offset-surface"
             >
-              {t('configuration.delete')}
+              {t('instance.panicModalConfirm')}
             </button>
           </div>
         </div>

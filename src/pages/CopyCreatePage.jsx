@@ -1,46 +1,29 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../utils/api';
 import CopyCreationForm from '../components/CopyCreationForm';
-import { TableSkeleton } from '../components/TableSkeleton';
-
-// Componente para os botões de paginação (sem alterações)
-const PaginationControls = ({ currentPage, totalPages, onPageChange }) => {
-  return (
-    <div className="flex justify-end items-center mt-4 gap-2">
-      <button
-        onClick={() => onPageChange(currentPage - 1)}
-        disabled={currentPage === 1}
-        className="px-3 py-1 bg-gray-700 rounded disabled:opacity-50"
-      >
-        Previous
-      </button>
-      <span className="text-sm text-gray-400">
-        Page {currentPage} of {totalPages}
-      </span>
-      <button
-        onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        className="px-3 py-1 bg-gray-700 rounded disabled:opacity-50"
-      >
-        Next
-      </button>
-    </div>
-  );
-};
+import TradingBarsLoader from '../components/TradingBarsLoader';
+import { FullScreenLoader } from '../components/FullScreenLoader';
+import Pagination from '../components/Pagination';
 
 function CopyCreatePage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
+
   const [showForm, setShowForm] = useState(false);
   const [editCopyData, setEditCopyData] = useState(null);
   const [copyToDelete, setCopyToDelete] = useState(null);
+  const [loadingStatusChange, setLoadingStatusChange] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
-  const [loadingStatusChange, setLoadingStatusChange] = useState(false); // NOVO
-  const [loadingDelete, setLoadingDelete] = useState(false);
-  
 
+  // Filter states
+  const [nameFilter, setNameFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 25;
+  const recordsPerPage = 25;
 
   const { data: copytradings = [], isLoading } = useQuery({
     queryKey: ['copytradings'],
@@ -50,32 +33,55 @@ function CopyCreatePage() {
       return data.copytradings || [];
     },
   });
-  
-  const totalPages = Math.ceil(copytradings.length / itemsPerPage);
-  const paginatedData = copytradings.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
 
-  // Mutação para deletar com feedback aprimorado
   const deleteMutation = useMutation({
-    mutationFn: (copytradingId) => 
+    mutationFn: (copytradingId) =>
       apiFetch('/remove_copytrading', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ copytrading_id: copytradingId }),
       }),
     onSuccess: () => {
-      setStatusMessage('✅ Configuration deleted successfully!');
       queryClient.invalidateQueries(['copytradings']);
-      setCopyToDelete(null); // Fecha o modal de confirmação
-      setTimeout(() => setStatusMessage(''), 2000); // Limpa a mensagem após 2 segundos
+      setCopyToDelete(null);
     },
     onError: (error) => {
-        setStatusMessage(`❌ Error: ${error.message}`);
-        setTimeout(() => setStatusMessage(''), 3000); // Limpa a mensagem após 3 segundos
-    }
+      console.error('Error deleting configuration:', error);
+      alert(t('copyCreate.deleteError'));
+    },
   });
+
+  // Filter copytradings
+  const filteredCopytradings = useMemo(() => {
+    return copytradings.filter(item => {
+      const nameMatch = nameFilter === '' || item.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const statusMatch = statusFilter === 'all' ||
+        (statusFilter === 'online' && item.status === 1) ||
+        (statusFilter === 'offline' && item.status === 0);
+      return nameMatch && statusMatch;
+    });
+  }, [copytradings, nameFilter, statusFilter]);
+
+  // Paginate
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * recordsPerPage;
+    return filteredCopytradings.slice(startIndex, startIndex + recordsPerPage);
+  }, [filteredCopytradings, currentPage, recordsPerPage]);
+
+  const totalPages = Math.ceil(filteredCopytradings.length / recordsPerPage);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [nameFilter, statusFilter]);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return { datePart: '-', timePart: '' };
+    const date = new Date(dateString);
+    const datePart = date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+    const timePart = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    return { datePart, timePart };
+  };
 
   const handleAdd = () => {
     setEditCopyData(null);
@@ -86,22 +92,11 @@ function CopyCreatePage() {
     setEditCopyData(copyItem);
     setShowForm(true);
   };
-  
+
   const handleDelete = () => {
     if (copyToDelete) {
       deleteMutation.mutate(copyToDelete.id);
     }
-  };
-
-  const tableHeaders = ["ID", "Name", "Status", "Creation Date", "Actions"];
-
-  const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    });
   };
 
   const handleStatusChange = async (copyItem, action) => {
@@ -109,142 +104,321 @@ function CopyCreatePage() {
       (action === 'start' && copyItem.status === 1) ||
       (action === 'stop' && copyItem.status === 0)
     ) return;
-  
+
     setLoadingStatusChange(true);
-    setStatusMessage(action === 'start' ? 'Starting configuration...' : 'Stopping configuration...');
-  
+    setStatusMessage(action === 'start' ? t('copyCreate.starting') : t('copyCreate.stopping'));
+
     try {
-      await apiFetch(`/${action}_copytrading`, {
+      const res = await apiFetch(`/${action}_copytrading`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ copytrading_id: copyItem.id })
+        body: JSON.stringify({ copytrading_id: copyItem.id }),
       });
-  
-      setStatusMessage(action === 'start' ? '✅ Configuration started' : '🛑 Configuration stopped');
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Unknown error');
+      }
+
+      setStatusMessage(action === 'start' ? t('copyCreate.startSuccess') : t('copyCreate.stopSuccess'));
       await queryClient.invalidateQueries(['copytradings']);
-  
-      setTimeout(() => {
-        setLoadingStatusChange(false);
-        setStatusMessage('');
-      }, 2000);
+
+      setTimeout(() => { setLoadingStatusChange(false); setStatusMessage(''); }, 2000);
     } catch (err) {
-      const errorData = await err.response?.json();
-      setStatusMessage(`❌ Error: ${errorData?.error || 'Operation failed'}`);
-      setTimeout(() => {
-        setLoadingStatusChange(false);
-        setStatusMessage('');
-      }, 3000);
+      console.error(`Error ${action} copytrading:`, err);
+      setStatusMessage(err.message);
+      setTimeout(() => { setLoadingStatusChange(false); setStatusMessage(''); }, 3000);
     }
   };
 
-  return (
-    <div className="p-4 sm:p-6 md:p-8 text-slate-200 animate-fade-in">
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-3xl font-bold text-white" style={{ textShadow: '0 0 8px rgba(239, 68, 68, 0.6)' }}>
-          Copy Trading
-        </h2>
-        <button 
-          onClick={handleAdd} 
-          className="px-4 py-2 font-semibold text-white rounded-md transition-all duration-300 transform bg-blue-600/90 hover:bg-blue-600 border border-blue-600/50 hover:border-blue-500 hover:-translate-y-px" 
-          style={{ filter: 'drop-shadow(0 0 6px rgba(59, 130, 246, 0.5))' }}
-        >
-          + Add New
-        </button>
+  const isMutating = deleteMutation.isPending;
+  const showLoader = loadingStatusChange || isMutating;
+  const loaderMessage = () => {
+    if (loadingStatusChange) return statusMessage;
+    if (isMutating) return t('copyCreate.deleting');
+    return '';
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-surface-primary">
+        <TradingBarsLoader title={t('copyCreate.loadingTitle')} subtitle={t('copyCreate.loadingDescription')} />
       </div>
+    );
+  }
 
-      {showForm && <CopyCreationForm 
-        show={showForm}
-        onClose={() => setShowForm(false)}
-        initialData={editCopyData}
-      />}
+  return (
+    <div className="min-h-screen bg-surface-primary">
+      <FullScreenLoader isOpen={showLoader} message={loaderMessage()} />
 
-      {isLoading ? (
-        <TableSkeleton headers={tableHeaders} />
-      ) : (
-        <>
-          <div className="overflow-x-auto bg-black/50 rounded-lg border border-gray-800">
-            <table className="min-w-full table-fixed w-full">
-              {/* ... Thead e Tbody da tabela (sem alterações) ... */}
-              <thead className='border-b border-red-500/30'>
-                <tr className="text-left text-sm font-semibold text-gray-400 uppercase tracking-wider">
-                  <th className="px-4 py-3 w-[10%]">ID</th>
-                  <th className="px-4 py-3 w-[50%]">Name</th>
-                  <th className="px-4 py-3 w-[15%]">Status</th>
-                  <th className="px-4 py-3 w-[25%]">Creation Date</th>
-                  <th className="px-4 py-3 w-[15%] text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="text-slate-300">
-                {paginatedData.map((item) => (
-                  <tr key={item.id} className="border-t border-gray-800/50 hover:bg-gray-900/50 transition-colors">
-                    <td className="px-4 py-3 whitespace-nowrap font-mono text-xs">{item.id}</td>
-                    <td className="px-4 py-3 whitespace-nowrap truncate" title={item.name}>{item.name}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${item.status === 1 ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-gray-600/30 text-gray-400 border border-gray-500/30'}`}>
-                        {item.status === 1 ? 'Online' : 'Offline'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">{formatDate(item.created_at)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex gap-4 justify-end items-center">
-                        <img 
-                            src="/icons/config.svg" alt="Configure" 
-                            title={item.status != 1 ? 'Configure' : 'Stop the configuration to be able to edit'} 
-                            className={`w-6 h-6 transition-opacity ${item.status != 1 ? 'cursor-pointer hover:opacity-75' : 'opacity-30 cursor-not-allowed'}`} 
-                            onClick={() => { if (item.status != 1) handleEdit(item); }} 
-                        />
-                        <img 
-                            src="/icons/play.svg" alt="Start" title="Start" 
-                            className={`w-6 h-6 transition-opacity ${item.status == 0 ? 'cursor-pointer hover:opacity-75' : 'opacity-30 cursor-not-allowed'}`} 
-                            onClick={() => handleStatusChange(item, 'start')} 
-                        />
-                        <img 
-                            src="/icons/pause.svg" alt="Stop" title="Stop" 
-                            className={`w-6 h-6 transition-opacity ${item.status == 1 ? 'cursor-pointer hover:opacity-75' : 'opacity-30 cursor-not-allowed'}`} 
-                            onClick={() => handleStatusChange(item, 'stop')} 
-                        />
-                        <img 
-                            src="/icons/trash.svg" alt="Remove" title="Remove" 
-                            className={`w-6 h-6 transition-opacity ${item.status != 1 ? 'cursor-pointer hover:opacity-75' : 'opacity-30 cursor-not-allowed'}`} 
-                            onClick={() => { if (item.status != 1) setCopyToDelete(item); }} 
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <div className="container mx-auto px-4 md:px-6 py-6">
+        {/* Header */}
+        <div className="bg-surface border border-border rounded-lg px-6 py-5 mb-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-teal-600 tracking-wider uppercase">
+              {t('copyCreate.title')}
+            </h1>
+            <button
+              onClick={handleAdd}
+              className="flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-lg font-semibold text-sm uppercase tracking-wider
+                       transition-all duration-300
+                       focus:outline-none focus:ring-2 focus:ring-accent/50
+                       border border-accent"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>{t('copyCreate.addNew')}</span>
+            </button>
           </div>
-          <PaginationControls 
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        </>
-      )}
+        </div>
 
-      {/* Modal de Confirmação para Deletar (sem alterações) */}
-      {copyToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 animate-fade-in">
-          <div className="bg-gray-900 p-8 rounded-lg shadow-lg text-center max-w-sm w-full border border-red-500/30">
-            <h3 className="text-xl font-semibold text-white mb-4">Confirm Deletion</h3>
-            <p className="text-slate-300 mb-2">Do you really want to delete this configuration?</p>
-            <p className="text-red-400 font-bold truncate">{copyToDelete.name}</p>
-            <div className="flex justify-center gap-4 mt-6">
-              <button onClick={() => setCopyToDelete(null)} className="px-4 py-2 text-white bg-gray-600 hover:bg-gray-700 rounded">Cancel</button>
-              <button onClick={handleDelete} disabled={deleteMutation.isLoading} className="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded disabled:bg-red-800">
-                {deleteMutation.isLoading ? 'Deleting...' : 'Confirm'}
-              </button>
+        <div className="space-y-6">
+          {/* Filters */}
+          <div className="bg-surface border border-border rounded-lg p-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Name Filter */}
+              <div>
+                <label htmlFor="name-filter" className="block text-xs font-semibold text-content-accent mb-2 uppercase tracking-wider">
+                  {t('copyCreate.filterByName')}
+                </label>
+                <input
+                  type="text"
+                  id="name-filter"
+                  value={nameFilter}
+                  onChange={(e) => setNameFilter(e.target.value)}
+                  placeholder={t('copyCreate.searchByName')}
+                  className="w-full px-4 py-2.5 bg-surface-primary border border-border text-content-primary rounded text-sm
+                           placeholder-content-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                />
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <label htmlFor="status-filter" className="block text-xs font-semibold text-content-accent mb-2 uppercase tracking-wider">
+                  {t('copyCreate.filterByStatus')}
+                </label>
+                <select
+                  id="status-filter"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-surface-primary border border-border text-content-primary rounded text-sm
+                           focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 appearance-none cursor-pointer"
+                >
+                  <option value="all">{t('copyCreate.allStatuses')}</option>
+                  <option value="online">{t('copyCreate.online')}</option>
+                  <option value="offline">{t('copyCreate.offline')}</option>
+                </select>
+              </div>
+
+              {/* Clear */}
+              <div className="flex items-end">
+                <button
+                  onClick={() => { setNameFilter(''); setStatusFilter('all'); }}
+                  className="px-5 py-2.5 bg-surface-raised border border-border text-content-secondary rounded text-sm uppercase tracking-wider
+                           hover:bg-surface-raised/80 hover:text-content-primary transition-colors
+                           focus:outline-none focus:ring-2 focus:ring-accent/20"
+                >
+                  {t('copyCreate.clearFilters')}
+                </button>
+              </div>
+            </div>
+
+            {/* Filter status indicator */}
+            <div className="mt-3 flex items-center gap-2 text-xs text-content-muted">
+              <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
+              <span className="uppercase tracking-wider">
+                {t('common.showing')} {filteredCopytradings.length} {t('common.of')} {copytradings.length} {t('copyCreate.configurationsLabel')}
+              </span>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="bg-surface border border-border rounded-lg overflow-hidden">
+            {/* Table header bar */}
+            <div className="bg-surface-raised/50 border-b border-border-subtle px-6 py-3">
+              <span className="text-sm text-content-secondary">
+                {t('copyCreate.registryHeader')}
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border-subtle">
+                    <th className="px-6 py-4 text-left text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyCreate.id')}</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyCreate.name')}</th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyCreate.status')}</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyCreate.createdAt')}</th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyCreate.actions')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-subtle">
+                  {paginatedData.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="px-6 py-12 text-center">
+                        <div className="text-content-muted text-sm">
+                          {copytradings.length === 0
+                            ? t('copyCreate.noConfigurations')
+                            : t('copyCreate.noMatchingConfigurations')
+                          }
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedData.map((item) => (
+                      <tr key={item.id} className="hover:bg-surface-raised/30 transition-colors group">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-content-secondary font-mono">
+                          {item.id}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-content-primary">
+                          {item.name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-bold uppercase tracking-wider ${
+                            item.status === 1
+                              ? 'bg-success-muted text-success'
+                              : 'bg-surface-raised text-content-muted'
+                          }`}>
+                            {item.status === 1 ? t('copyCreate.statusOnline') : t('copyCreate.statusOffline')}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col">
+                            <span className="text-sm text-content-secondary font-mono">{formatDate(item.created_at).datePart}</span>
+                            <span className="text-xs text-content-muted font-mono">{formatDate(item.created_at).timePart}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end gap-3">
+                            {/* Configure */}
+                            <button
+                              onClick={() => { if (item.status !== 1) handleEdit(item); }}
+                              disabled={item.status === 1}
+                              className="p-2 hover:bg-surface-raised rounded transition-all duration-200 group/btn disabled:opacity-30 disabled:cursor-not-allowed"
+                              title={item.status !== 1 ? t('copyCreate.configure') : t('copyCreate.stopToEdit')}
+                            >
+                              <svg className="w-5 h-5 text-content-muted group-hover/btn:text-content-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            </button>
+                            {/* Start */}
+                            <button
+                              onClick={() => handleStatusChange(item, 'start')}
+                              disabled={item.status === 1}
+                              className="p-2 hover:bg-surface-raised rounded transition-all duration-200 group/btn disabled:opacity-30 disabled:cursor-not-allowed"
+                              title={t('copyCreate.start')}
+                            >
+                              <svg className="w-5 h-5 text-content-muted group-hover/btn:text-success transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </button>
+                            {/* Stop */}
+                            <button
+                              onClick={() => handleStatusChange(item, 'stop')}
+                              disabled={item.status === 0}
+                              className="p-2 hover:bg-surface-raised rounded transition-all duration-200 group/btn disabled:opacity-30 disabled:cursor-not-allowed"
+                              title={t('copyCreate.stop')}
+                            >
+                              <svg className="w-5 h-5 text-content-muted group-hover/btn:text-warning transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </button>
+                            {/* Delete */}
+                            <button
+                              onClick={() => { if (item.status !== 1) setCopyToDelete(item); }}
+                              disabled={item.status === 1}
+                              className="p-2 hover:bg-surface-raised rounded transition-all duration-200 group/btn disabled:opacity-30 disabled:cursor-not-allowed"
+                              title={t('copyCreate.delete')}
+                            >
+                              <svg className="w-5 h-5 text-content-muted group-hover/btn:text-danger transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <div className="bg-surface-raised/30 border-t border-border-subtle px-6 py-4">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                itemsPerPage={recordsPerPage}
+                totalItems={filteredCopytradings.length}
+                itemLabel={t('copyCreate.configurationsLabel')}
+              />
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Creation/Edit Form Modal */}
+      {showForm && (
+        <CopyCreationForm
+          show={showForm}
+          onClose={() => setShowForm(false)}
+          initialData={editCopyData}
+        />
       )}
 
-      {/* --- NOVA TELA DE CARREGAMENTO GLOBAL --- */}
-      {(loadingDelete || loadingStatusChange || statusMessage) && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[100]">
-          <div className="bg-gray-900 px-8 py-6 rounded-lg shadow-lg text-white text-xl text-center">
-            <p>{statusMessage || (loadingDelete && "Deleting configuration...")}</p>
+      {/* Delete Confirmation Modal */}
+      {copyToDelete && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-surface border border-border rounded-lg shadow-2xl p-8 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-danger-muted rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-content-primary">
+                {t('copyCreate.deleteModalTitle')}
+              </h3>
+            </div>
+
+            <p className="text-content-secondary text-sm mb-2">
+              {t('copyCreate.deleteModalMessage')}
+            </p>
+
+            <div className="bg-surface-primary border border-border rounded p-3 mb-4">
+              <p className="text-content-primary font-medium text-sm">
+                {copyToDelete.name}
+              </p>
+              <p className="text-content-muted text-xs mt-1">
+                ID: {copyToDelete.id}
+              </p>
+            </div>
+
+            <p className="text-xs text-warning mb-6">
+              {t('copyCreate.deleteModalCannotUndo')}
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setCopyToDelete(null)}
+                className="px-5 py-2.5 bg-surface-raised border border-border text-content-secondary rounded text-sm font-medium
+                         hover:bg-surface-raised/80 transition-colors"
+              >
+                {t('copyCreate.deleteModalCancel')}
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleteMutation.isPending}
+                className="px-5 py-2.5 bg-danger hover:bg-danger/80 text-white rounded text-sm font-medium transition-colors
+                         disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deleteMutation.isPending ? t('copyCreate.deleting') : t('copyCreate.deleteModalConfirm')}
+              </button>
+            </div>
           </div>
         </div>
       )}

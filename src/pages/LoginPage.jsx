@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../utils/api';
 import { ethers } from 'ethers';
 import logoImage from '../assets/logo.png';
@@ -181,6 +181,16 @@ function LoginPage() {
               </svg>
               Login with Wallet
             </button>
+
+            <p className="text-center text-gray-400 text-sm mt-6">
+              Don't have an account?{' '}
+              <Link
+                to="/register"
+                className="text-red-400 hover:text-red-300 font-medium transition-colors"
+              >
+                Register
+              </Link>
+            </p>
           </div>
         </div>
       </div>

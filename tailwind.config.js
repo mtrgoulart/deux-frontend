@@ -6,6 +6,42 @@ module.exports = {
   ],
   theme: {
     extend: {
+      colors: {
+        surface: {
+          DEFAULT: 'var(--bg-surface)',
+          raised: 'var(--bg-surface-raised)',
+          primary: 'var(--bg-primary)',
+          overlay: 'var(--bg-overlay)',
+        },
+        accent: {
+          DEFAULT: 'var(--accent)',
+          hover: 'var(--accent-hover)',
+          muted: 'var(--accent-muted)',
+        },
+        border: {
+          DEFAULT: 'var(--border-default)',
+          subtle: 'var(--border-subtle)',
+          accent: 'var(--border-accent)',
+        },
+        content: {
+          primary: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          muted: 'var(--text-muted)',
+          accent: 'var(--text-accent)',
+        },
+        success: {
+          DEFAULT: 'var(--success)',
+          muted: 'var(--success-muted)',
+        },
+        danger: {
+          DEFAULT: 'var(--danger)',
+          muted: 'var(--danger-muted)',
+        },
+        warning: {
+          DEFAULT: 'var(--warning)',
+          muted: 'var(--warning-muted)',
+        },
+      },
       keyframes: {
         'fade-in': {
           '0%': { opacity: '0', transform: 'scale(0.95)' },

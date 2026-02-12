@@ -1,7 +1,6 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-export function ConfirmDeleteModal({ isOpen, onClose, onConfirm, strategy }) {
+export function InstanceDeleteModal({ isOpen, onClose, onConfirm, instance }) {
   const { t } = useTranslation();
 
   if (!isOpen) return null;
@@ -22,30 +21,32 @@ export function ConfirmDeleteModal({ isOpen, onClose, onConfirm, strategy }) {
           {/* Content */}
           <div className="text-center mb-8">
             <h3 className="text-2xl font-bold text-content-primary tracking-wider uppercase mb-4">
-              {t('configuration.confirmDeletion')}
+              {t('instance.deleteModalTitle')}
             </h3>
             <p className="text-content-secondary text-sm mb-4">
-              {t('configuration.deleteConfirmMessage')}
+              {t('instance.deleteModalMessage')}
             </p>
 
-            {/* Configuration Info */}
+            {/* Instance Info */}
             <div className="bg-surface-raised/50 border border-border-subtle rounded-lg p-4 mb-2">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-content-muted uppercase tracking-wider">{t('configuration.name')}</span>
-                <span className="text-content-primary font-bold" title={strategy?.name}>
-                  {strategy?.name || t('configuration.noName')}
+                <span className="text-xs text-content-muted uppercase tracking-wider">{t('instance.name')}</span>
+                <span className="text-content-primary font-bold" title={instance?.name}>
+                  {instance?.name || t('instance.deleteModalNoName')}
                 </span>
               </div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-content-muted uppercase tracking-wider">{t('instance.id')}</span>
+                <span className="text-content-secondary font-mono">{instance?.id || '--'}</span>
+              </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-content-muted uppercase tracking-wider">{t('configuration.id')}</span>
-                <span className="text-content-secondary font-mono">
-                  {strategy?.id || '--'}
-                </span>
+                <span className="text-xs text-content-muted uppercase tracking-wider">{t('instance.symbol')}</span>
+                <span className="text-content-secondary font-mono">{instance?.symbol || '--'}</span>
               </div>
             </div>
 
             <p className="text-xs text-warning mt-4">
-              {t('configuration.cannotUndo')}
+              {t('instance.deleteModalCannotUndo')}
             </p>
           </div>
 
@@ -57,7 +58,7 @@ export function ConfirmDeleteModal({ isOpen, onClose, onConfirm, strategy }) {
                        hover:bg-surface-raised/80 hover:text-content-primary transition-all duration-300
                        focus:outline-none focus:ring-2 focus:ring-accent/20"
             >
-              {t('configuration.cancel')}
+              {t('instance.deleteModalCancel')}
             </button>
             <button
               onClick={onConfirm}
@@ -65,7 +66,7 @@ export function ConfirmDeleteModal({ isOpen, onClose, onConfirm, strategy }) {
                        border border-danger/50 transition-all duration-300
                        focus:outline-none focus:ring-2 focus:ring-danger/50 focus:ring-offset-2 focus:ring-offset-surface"
             >
-              {t('configuration.delete')}
+              {t('instance.deleteModalConfirm')}
             </button>
           </div>
         </div>
