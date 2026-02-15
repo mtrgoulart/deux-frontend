@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { createChart } from 'lightweight-charts';
 import { apiFetch } from '../utils/api';
 import { MoonLoader } from 'react-spinners';
@@ -7,6 +8,7 @@ import { MoonLoader } from 'react-spinners';
 
 // Componente que renderiza o gráfico de candlestick
 const TradingChart = ({ symbol, timeframe }) => {
+    const { t } = useTranslation();
     const chartContainerRef = useRef(null);
     const chartRef = useRef(null);
     const candleSeriesRef = useRef(null);
@@ -208,11 +210,11 @@ const TradingChart = ({ symbol, timeframe }) => {
         <div className="relative" style={{ height: '550px' }}>
             {/* Feedback de Loading */}
             {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-10">
+                <div className="absolute inset-0 flex items-center justify-center bg-surface-primary/80 backdrop-blur-sm z-10">
                     <div className="text-center">
-                        <MoonLoader color="#ef4444" size={60} />
-                        <p className="text-red-500 font-mono text-sm mt-4 tracking-wider uppercase">
-                            Loading Chart Data...
+                        <MoonLoader color="#2dd4bf" size={60} />
+                        <p className="text-content-muted text-sm mt-4">
+                            {t('marketData.loadingChart')}
                         </p>
                     </div>
                 </div>
@@ -220,15 +222,15 @@ const TradingChart = ({ symbol, timeframe }) => {
 
             {/* Feedback de Erro */}
             {!isLoading && error && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/90 backdrop-blur-sm z-10">
+                <div className="absolute inset-0 flex items-center justify-center bg-surface-primary/90 backdrop-blur-sm z-10">
                     <div className="text-center px-6">
-                        <div className="w-16 h-16 mx-auto mb-4 border-4 border-red-500 rounded-full flex items-center justify-center">
-                            <span className="text-red-500 text-2xl font-bold">!</span>
+                        <div className="w-16 h-16 mx-auto mb-4 border-4 border-danger rounded-full flex items-center justify-center">
+                            <span className="text-danger text-2xl font-bold">!</span>
                         </div>
-                        <p className="text-red-500 font-mono text-sm mb-2 uppercase tracking-wider">
-                            [System Error]
+                        <p className="text-danger text-sm mb-2 font-semibold">
+                            {t('marketData.systemError')}
                         </p>
-                        <p className="text-red-400 font-medium max-w-md">
+                        <p className="text-content-secondary font-medium max-w-md">
                             {error.message}
                         </p>
                     </div>

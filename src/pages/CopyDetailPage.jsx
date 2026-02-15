@@ -1,10 +1,11 @@
 // pages/CopyDetailPage.jsx
 
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '../utils/api';
+import { useDateRangeFilter } from '../hooks/useDateRangeFilter';
 import { Line } from 'react-chartjs-2';
 import {
     Chart as ChartJS,
@@ -18,7 +19,9 @@ import {
     Filler,
 } from 'chart.js';
 import Pagination from '../components/Pagination';
+import DateRangeFilter from '../components/DateRangeFilter';
 import TradingBarsLoader from '../components/TradingBarsLoader';
+import RefreshButton from '../components/RefreshButton';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
@@ -29,6 +32,15 @@ function CopyDetailPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const limit = 50;
 
+    // Filter states
+    const [selectedSymbol, setSelectedSymbol] = useState('all');
+    const { startDate, setStartDate, endDate, setEndDate, setRelativeDateRange, datePresets } = useDateRangeFilter();
+
+    // Reset page when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedSymbol, startDate, endDate]);
+
     // Fetch copytrading details
     const { data: detailsData, isLoading: isLoadingDetails } = useQuery({
         queryKey: ['copytrading_details', id],
@@ -38,29 +50,62 @@ function CopyDetailPage() {
         },
     });
 
+    // Extract unique symbols from sharings
+    const uniqueSymbols = useMemo(() => {
+        if (!detailsData?.sharings) return [];
+        const symbolsSet = new Set();
+        detailsData.sharings.forEach(s => {
+            if (s.symbol) symbolsSet.add(s.symbol);
+        });
+        return Array.from(symbolsSet).sort();
+    }, [detailsData]);
+
+    // Build query params for date filters
+    const dateParams = useMemo(() => {
+        const params = new URLSearchParams();
+        if (startDate) params.set('start_date', startDate);
+        if (endDate) params.set('end_date', endDate);
+        return params.toString();
+    }, [startDate, endDate]);
+
     // Fetch chart data
     const { data: chartResponse, isLoading: isLoadingChart } = useQuery({
-        queryKey: ['copytrading_chart', id],
+        queryKey: ['copytrading_chart', id, startDate, endDate],
         queryFn: async () => {
-            const res = await apiFetch(`/copytrading/${id}/chart`);
+            const url = `/copytrading/${id}/chart${dateParams ? `?${dateParams}` : ''}`;
+            const res = await apiFetch(url);
             return res.json();
         },
     });
 
-    // Fetch trades with pagination
-    const { data: tradesData, isLoading: isLoadingTrades } = useQuery({
-        queryKey: ['copytrading_trades', id, currentPage],
+    // Fetch positions with pagination and filters
+    const { data: positionsData, isLoading: isLoadingPositions, isFetching: positionsFetching, refetch: refetchPositions } = useQuery({
+        queryKey: ['copytrading_positions', id, currentPage, selectedSymbol, startDate, endDate],
         queryFn: async () => {
-            const res = await apiFetch(`/copytrading/${id}/trades?page=${currentPage}&limit=${limit}`);
+            const params = new URLSearchParams({
+                page: currentPage,
+                limit: limit,
+                symbol: selectedSymbol,
+            });
+            if (startDate) params.set('start_date', startDate);
+            if (endDate) params.set('end_date', endDate);
+            const res = await apiFetch(`/copytrading/${id}/positions?${params.toString()}`);
             return res.json();
         },
         keepPreviousData: true,
     });
 
     const chartData = chartResponse?.chart_data || [];
-    const trades = tradesData?.trades || [];
-    const totalPages = tradesData?.total_pages || 1;
-    const totalCount = tradesData?.total_count || 0;
+    const positions = positionsData?.positions || [];
+    const totalPages = positionsData?.total_pages || 1;
+    const totalCount = positionsData?.total_count || 0;
+
+    // Summary stats from positions
+    const summaryStats = useMemo(() => {
+        const openCount = positions.filter(p => p.status === 'open').length;
+        const closedCount = positions.filter(p => p.status === 'closed').length;
+        return { openCount, closedCount };
+    }, [positions]);
 
     // Chart configuration
     const hasChartData = chartData.length > 0;
@@ -124,9 +169,9 @@ function CopyDetailPage() {
         }
     };
 
-    const isLoading = isLoadingDetails || isLoadingChart || isLoadingTrades;
+    const isLoading = isLoadingDetails || isLoadingChart || isLoadingPositions;
 
-    if (isLoading && !tradesData) {
+    if (isLoading && !positionsData) {
         return (
             <div className="bg-surface-primary">
                 <TradingBarsLoader title={t('copyDetail.loadingTitle')} subtitle={t('copyDetail.loadingSubtitle')} />
@@ -158,6 +203,22 @@ function CopyDetailPage() {
                                 </p>
                             </div>
                         </div>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 bg-surface-primary rounded-lg px-4 py-2 border border-border-subtle">
+                                <span className="text-xs text-content-muted uppercase tracking-wider">{t('copyDetail.openPositions')}</span>
+                                <span className="text-lg font-bold font-mono text-content-primary">{summaryStats.openCount}</span>
+                            </div>
+                            <div className="flex items-center gap-3 bg-surface-primary rounded-lg px-4 py-2 border border-border-subtle">
+                                <span className="text-xs text-content-muted uppercase tracking-wider">{t('copyDetail.closedPositions')}</span>
+                                <span className="text-lg font-bold font-mono text-content-primary">{summaryStats.closedCount}</span>
+                            </div>
+                            <div className="flex items-center gap-3 bg-surface-primary rounded-lg px-5 py-2.5 border border-border-subtle">
+                                <span className="text-xs text-content-muted uppercase tracking-wider">{t('copyDetail.totalPnl')}</span>
+                                <span className={`text-2xl font-bold font-mono ${lastPnl >= 0 ? 'text-success' : 'text-danger'}`}>
+                                    {lastPnl >= 0 ? '+' : ''}${lastPnl.toFixed(2)}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -178,94 +239,156 @@ function CopyDetailPage() {
                                     <p className="text-content-muted text-sm">{t('copyDetail.noChartData')}</p>
                                 </div>
                             )}
-
-                            {/* Summary Stats */}
-                            {hasChartData && (
-                                <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div className="bg-surface-raised/50 border border-border-subtle rounded-lg p-4 text-center">
-                                        <div className="text-xs text-content-muted uppercase tracking-wider mb-1">{t('copyDetail.currentPnl')}</div>
-                                        <div className={`text-xl font-black font-mono ${lastPnl >= 0 ? 'text-success' : 'text-danger'}`}>
-                                            {lastPnl >= 0 ? '+' : ''}${lastPnl.toFixed(2)}
-                                        </div>
-                                    </div>
-                                    <div className="bg-surface-raised/50 border border-border-subtle rounded-lg p-4 text-center">
-                                        <div className="text-xs text-content-muted uppercase tracking-wider mb-1">{t('copyDetail.daysTracked')}</div>
-                                        <div className="text-xl font-black font-mono text-content-primary">{chartData.length}</div>
-                                    </div>
-                                    <div className="bg-surface-raised/50 border border-border-subtle rounded-lg p-4 text-center">
-                                        <div className="text-xs text-content-muted uppercase tracking-wider mb-1">{t('copyDetail.totalTrades')}</div>
-                                        <div className="text-xl font-black font-mono text-content-primary">{totalCount}</div>
-                                    </div>
-                                    <div className="bg-surface-raised/50 border border-border-subtle rounded-lg p-4 text-center">
-                                        <div className="text-xs text-content-muted uppercase tracking-wider mb-1">{t('copyDetail.status')}</div>
-                                        <div className="text-xl font-black font-mono text-success">{t('copyDetail.active')}</div>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </div>
 
-                    {/* Trade History Table */}
+                    {/* Filters */}
                     <div>
                         <h2 className="text-lg font-semibold text-content-accent uppercase tracking-wider mb-4">
-                            {t('copyDetail.tradeHistory')}
+                            {t('copyDetail.filters')}
+                        </h2>
+
+                        <div className="bg-surface border border-border rounded-lg p-5">
+                            <div className="flex flex-col md:flex-row gap-4">
+                                {/* Symbol Filter */}
+                                <div className="flex-1">
+                                    <label
+                                        htmlFor="symbol-filter"
+                                        className="block text-xs font-semibold text-content-accent mb-2 uppercase tracking-wider"
+                                    >
+                                        {t('copyDetail.filterBySymbol')}
+                                    </label>
+                                    <select
+                                        id="symbol-filter"
+                                        value={selectedSymbol}
+                                        onChange={(e) => setSelectedSymbol(e.target.value)}
+                                        className="w-full px-4 py-3 bg-surface-primary border border-border text-content-primary rounded text-sm
+                                                 focus:outline-none focus:border-border-accent focus:ring-2 focus:ring-accent/20
+                                                 hover:border-content-muted transition-colors
+                                                 appearance-none cursor-pointer"
+                                    >
+                                        <option value="all">{t('copyDetail.allSymbols')}</option>
+                                        {uniqueSymbols.map(symbol => (
+                                            <option key={symbol} value={symbol}>{symbol}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Clear All Button */}
+                                <div className="flex items-end">
+                                    <button
+                                        onClick={() => {
+                                            setSelectedSymbol('all');
+                                            setStartDate('');
+                                            setEndDate('');
+                                        }}
+                                        className="px-6 py-3 bg-surface-raised border border-border text-content-secondary rounded text-sm
+                                                 hover:bg-surface-raised hover:text-content-primary transition-colors
+                                                 focus:outline-none focus:ring-2 focus:ring-accent/20"
+                                    >
+                                        {t('copyDetail.clearFilters')}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <DateRangeFilter
+                                startDate={startDate}
+                                endDate={endDate}
+                                onStartDateChange={setStartDate}
+                                onEndDateChange={setEndDate}
+                                onPresetChange={setRelativeDateRange}
+                                datePresets={datePresets}
+                            />
+
+                            {/* Filter status indicator */}
+                            <div className="mt-3 flex items-center gap-2 text-xs text-content-muted">
+                                <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
+                                <span>
+                                    {t('copyDetail.showingPositions', { count: positions.length, total: totalCount })}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Position History Table */}
+                    <div>
+                        <h2 className="text-lg font-semibold text-content-accent uppercase tracking-wider mb-4">
+                            {t('copyDetail.positionHistory')}
                         </h2>
 
                         <div className="bg-surface border border-border rounded-lg overflow-hidden">
                             {/* Table header bar */}
-                            <div className="bg-surface-raised/50 border-b border-border-subtle px-6 py-3">
+                            <div className="bg-surface-raised/50 border-b border-border-subtle px-6 py-3 flex items-center justify-between">
                                 <span className="text-sm text-content-accent uppercase tracking-wider">
-                                    {t('copyDetail.tradeLog')}
+                                    {t('copyDetail.positionLog')}
                                 </span>
+                                <RefreshButton onClick={refetchPositions} isRefreshing={positionsFetching} label={t('common.refresh')} />
                             </div>
 
-                            {trades.length > 0 ? (
+                            {positions.length > 0 ? (
                                 <>
                                     <div className="overflow-x-auto">
                                         <table className="w-full">
                                             <thead>
                                                 <tr className="border-b border-border-subtle bg-surface-raised/30">
-                                                    <th className="px-6 py-4 text-left text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyDetail.date')}</th>
                                                     <th className="px-6 py-4 text-left text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyDetail.symbol')}</th>
-                                                    <th className="px-6 py-4 text-left text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyDetail.side')}</th>
-                                                    <th className="px-6 py-4 text-right text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyDetail.size')}</th>
-                                                    <th className="px-6 py-4 text-right text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyDetail.price')}</th>
-                                                    <th className="px-6 py-4 text-right text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyDetail.usdtValue')}</th>
+                                                    <th className="px-6 py-4 text-center text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyDetail.status')}</th>
+                                                    <th className="px-6 py-4 text-right text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyDetail.qty')}</th>
+                                                    <th className="px-6 py-4 text-right text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyDetail.buyPrice')}</th>
+                                                    <th className="px-6 py-4 text-right text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyDetail.sellPrice')}</th>
+                                                    <th className="px-6 py-4 text-right text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyDetail.pnl')}</th>
+                                                    <th className="px-6 py-4 text-left text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyDetail.entryDate')}</th>
+                                                    <th className="px-6 py-4 text-left text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyDetail.closeDate')}</th>
                                                     <th className="px-6 py-4 text-left text-xs font-bold text-content-muted uppercase tracking-wider">{t('copyDetail.instance')}</th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-border-subtle">
-                                                {trades.map((trade) => (
-                                                    <tr key={trade.id} className="hover:bg-surface-raised/30 transition-colors group">
+                                            <tbody className={`divide-y divide-border-subtle transition-opacity duration-300 ${positionsFetching && !isLoadingPositions ? 'opacity-40' : ''}`}>
+                                                {positions.map((pos) => (
+                                                    <tr key={pos.id} className="hover:bg-surface-raised/30 transition-colors group">
+                                                        <td className="px-6 py-4 text-sm font-mono font-bold text-content-accent">{pos.symbol}</td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                            {pos.status === 'open' ? (
+                                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded text-xs font-bold uppercase tracking-wider bg-success-muted text-success border border-success/30">
+                                                                    {t('copyDetail.statusOpen')}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded text-xs font-bold uppercase tracking-wider bg-surface-raised/50 border border-border-subtle text-content-secondary">
+                                                                    {t('copyDetail.statusClosed')}
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-sm font-mono text-content-secondary text-right">
+                                                            {pos.base_qty != null ? pos.base_qty.toFixed(6) : '--'}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-sm font-mono text-content-secondary text-right">
+                                                            {pos.buy_price != null ? `$${pos.buy_price.toFixed(2)}` : '--'}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-sm font-mono text-content-secondary text-right">
+                                                            {pos.sell_price != null ? `$${pos.sell_price.toFixed(2)}` : '--'}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-sm font-mono font-bold text-right">
+                                                            {pos.pnl != null ? (
+                                                                <span className={pos.pnl >= 0 ? 'text-success' : 'text-danger'}>
+                                                                    {pos.pnl >= 0 ? '+' : ''}{pos.pnl.toFixed(2)}
+                                                                </span>
+                                                            ) : '--'}
+                                                        </td>
                                                         <td className="px-6 py-4 text-sm font-mono text-content-secondary">
-                                                            {new Date(trade.date).toLocaleString('en-US', {
-                                                                month: 'short',
-                                                                day: 'numeric',
-                                                                hour: '2-digit',
-                                                                minute: '2-digit'
-                                                            })}
+                                                            {pos.created_at
+                                                                ? new Date(pos.created_at).toLocaleString('en-US', {
+                                                                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                                                                })
+                                                                : '--'}
                                                         </td>
-                                                        <td className="px-6 py-4 text-sm font-mono font-bold text-content-accent">{trade.symbol}</td>
-                                                        <td className="px-6 py-4">
-                                                            <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-bold uppercase tracking-wider ${
-                                                                trade.side === 'buy'
-                                                                    ? 'bg-success-muted text-success'
-                                                                    : 'bg-danger-muted text-danger'
-                                                            }`}>
-                                                                {trade.side === 'buy' ? t('copyDetail.buy') : t('copyDetail.sell')}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-6 py-4 text-sm font-mono text-content-secondary text-right">
-                                                            {trade.size.toFixed(6)}
-                                                        </td>
-                                                        <td className="px-6 py-4 text-sm font-mono text-content-secondary text-right">
-                                                            ${trade.execution_price.toFixed(2)}
-                                                        </td>
-                                                        <td className="px-6 py-4 text-sm font-mono font-bold text-content-primary text-right">
-                                                            ${trade.usdt_value.toFixed(2)}
+                                                        <td className="px-6 py-4 text-sm font-mono text-content-secondary">
+                                                            {pos.closed_at
+                                                                ? new Date(pos.closed_at).toLocaleString('en-US', {
+                                                                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                                                                })
+                                                                : '--'}
                                                         </td>
                                                         <td className="px-6 py-4 text-sm text-content-secondary">
-                                                            {trade.instance_name}
+                                                            {pos.instance_name}
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -281,13 +404,13 @@ function CopyDetailPage() {
                                             onPageChange={setCurrentPage}
                                             itemsPerPage={limit}
                                             totalItems={totalCount}
-                                            itemLabel={t('copyDetail.tradesLabel')}
+                                            itemLabel={t('copyDetail.positionsLabel')}
                                         />
                                     </div>
                                 </>
                             ) : (
                                 <div className="px-6 py-12 text-center">
-                                    <p className="text-content-muted text-sm">{t('copyDetail.noTrades')}</p>
+                                    <p className="text-content-muted text-sm">{t('copyDetail.noPositions')}</p>
                                 </div>
                             )}
                         </div>
