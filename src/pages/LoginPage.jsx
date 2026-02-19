@@ -108,7 +108,7 @@ function LoginPage() {
           <img
             src={logoImage}
             alt={t('auth.logoAlt')}
-            className="w-48 h-auto mx-auto mb-8 animate-logo-pulse"
+            className="w-[15.6rem] h-auto mx-auto mb-8"
           />
 
           {error && (
