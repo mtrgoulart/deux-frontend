@@ -774,7 +774,9 @@
     "traceDetail": "Trace Detail",
     "pipeline": "Pipeline Stages",
     "errorMessage": "Error",
-    "close": "Close"
+    "close": "Close",
+    "userId": "User",
+    "rawMessage": "Raw Message"
   },
   "copySubscription": {
     "title": "My Subscriptions",

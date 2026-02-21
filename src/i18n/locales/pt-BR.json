@@ -774,7 +774,9 @@
     "traceDetail": "Detalhe do Rastreamento",
     "pipeline": "Estágios do Pipeline",
     "errorMessage": "Erro",
-    "close": "Fechar"
+    "close": "Fechar",
+    "userId": "Usuário",
+    "rawMessage": "Mensagem Original"
   },
   "copySubscription": {
     "title": "Minhas Assinaturas",

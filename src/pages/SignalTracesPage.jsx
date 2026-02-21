@@ -49,11 +49,158 @@ function StatsBar({ stats, isLoading }) {
   );
 }
 
+// ─── Stage Grouping Utility ─────────────────────────────────────────────────
+
+function groupStages(stages) {
+  if (!stages || stages.length === 0) return [];
+
+  const groups = [];
+  const groupMap = new Map();
+
+  for (const entry of stages) {
+    const name = entry.stage;
+    if (groupMap.has(name)) {
+      groupMap.get(name).entries.push(entry);
+    } else {
+      const group = { stageName: name, entries: [entry] };
+      groupMap.set(name, group);
+      groups.push(group);
+    }
+  }
+
+  // Set final status to the last entry's status
+  for (const group of groups) {
+    group.finalStatus = group.entries[group.entries.length - 1].status;
+  }
+
+  return groups;
+}
+
+// ─── Stage Group Component ──────────────────────────────────────────────────
+
+function StageGroup({ group }) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const { stageName, finalStatus, entries } = group;
+  const isMulti = entries.length > 1;
+  const firstEntry = entries[0];
+  const lastEntry = entries[entries.length - 1];
+
+  const dotColor =
+    finalStatus === 'completed' ? 'bg-success' :
+    finalStatus === 'failed' ? 'bg-danger' :
+    finalStatus === 'skipped' ? 'bg-warning' :
+    'bg-accent';
+
+  // Extract raw_message from webhook_received metadata
+  const rawMessage = stageName === 'webhook_received'
+    ? entries.find(e => e.metadata?.raw_message)?.metadata?.raw_message
+    : null;
+
+  return (
+    <div className="relative">
+      <div className={`absolute -left-[25px] top-1 w-3 h-3 rounded-full ${dotColor} ring-2 ring-surface`} />
+      <div className="bg-surface-raised rounded-lg p-3 border border-border-subtle">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-content-primary">{stageName}</span>
+            {isMulti && (
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="text-xs text-content-muted hover:text-content-primary transition-colors"
+              >
+                {expanded ? '▾' : '▸'} {entries.length} steps
+              </button>
+            )}
+          </div>
+          <StatusBadge status={finalStatus} />
+        </div>
+
+        {/* Timestamp range */}
+        <p className="text-xs text-content-muted">
+          {new Date(firstEntry.timestamp).toLocaleString()}
+          {isMulti && ` → ${new Date(lastEntry.timestamp).toLocaleString()}`}
+        </p>
+
+        {/* Raw message display for webhook_received */}
+        {rawMessage && (
+          <div className="mt-2">
+            <p className="text-xs font-semibold text-content-secondary mb-1">{t('traces.rawMessage')}</p>
+            <pre className="text-xs text-content-primary bg-surface rounded p-2 font-mono whitespace-pre-wrap break-all border border-border-subtle">
+              {rawMessage}
+            </pre>
+          </div>
+        )}
+
+        {/* Single-entry: show metadata/errors inline */}
+        {!isMulti && (
+          <>
+            {firstEntry.celery_task_id && (
+              <p className="text-xs text-content-muted mt-1 font-mono">
+                Task: {firstEntry.celery_task_id.substring(0, 8)}...
+              </p>
+            )}
+            {firstEntry.error && (
+              <p className="text-xs text-danger mt-1">{firstEntry.error}</p>
+            )}
+            {firstEntry.metadata && Object.keys(firstEntry.metadata).filter(k => k !== 'raw_message').length > 0 && (
+              <div className="mt-2 text-xs text-content-muted bg-surface rounded p-2 font-mono">
+                {Object.entries(firstEntry.metadata)
+                  .filter(([k]) => k !== 'raw_message')
+                  .map(([k, v]) => (
+                    <div key={k}>{k}: {typeof v === 'object' ? JSON.stringify(v) : String(v)}</div>
+                  ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Multi-entry: expandable sub-steps */}
+        {isMulti && expanded && (
+          <div className="mt-2 space-y-2 pl-3 border-l-2 border-border-subtle">
+            {entries.map((entry, idx) => (
+              <div key={idx} className="bg-surface rounded p-2 border border-border-subtle">
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-xs text-content-secondary">{entry.status}</span>
+                  <StatusBadge status={entry.status} />
+                </div>
+                <p className="text-xs text-content-muted">
+                  {new Date(entry.timestamp).toLocaleString()}
+                </p>
+                {entry.celery_task_id && (
+                  <p className="text-xs text-content-muted mt-0.5 font-mono">
+                    Task: {entry.celery_task_id.substring(0, 8)}...
+                  </p>
+                )}
+                {entry.error && (
+                  <p className="text-xs text-danger mt-0.5">{entry.error}</p>
+                )}
+                {entry.metadata && Object.keys(entry.metadata).filter(k => k !== 'raw_message').length > 0 && (
+                  <div className="mt-1 text-xs text-content-muted bg-surface-raised rounded p-1.5 font-mono">
+                    {Object.entries(entry.metadata)
+                      .filter(([k]) => k !== 'raw_message')
+                      .map(([k, v]) => (
+                        <div key={k}>{k}: {typeof v === 'object' ? JSON.stringify(v) : String(v)}</div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Detail Modal ────────────────────────────────────────────────────────────
 
 function TraceDetailModal({ trace, onClose }) {
   const { t } = useTranslation();
   if (!trace) return null;
+
+  const stageGroups = groupStages(trace.stages);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
@@ -64,7 +211,14 @@ function TraceDetailModal({ trace, onClose }) {
         {/* Header */}
         <div className="px-6 py-4 border-b border-border flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-bold text-content-primary">{t('traces.traceDetail')}</h3>
+            <div className="flex items-center gap-3">
+              <h3 className="text-lg font-bold text-content-primary">{t('traces.traceDetail')}</h3>
+              {trace.user_id && (
+                <span className="text-sm text-content-muted">
+                  {t('traces.userId')}: <span className="font-medium text-content-secondary">{trace.user_id}</span>
+                </span>
+              )}
+            </div>
             <p className="text-xs text-content-muted font-mono mt-0.5">{trace.trace_id}</p>
           </div>
           <StatusBadge status={trace.final_status} />
@@ -96,44 +250,9 @@ function TraceDetailModal({ trace, onClose }) {
         <div className="px-6 py-4 overflow-y-auto flex-1">
           <h4 className="text-sm font-semibold text-content-secondary mb-3">{t('traces.pipeline')}</h4>
           <div className="relative pl-6 border-l-2 border-border space-y-4">
-            {(trace.stages || []).map((stage, idx) => {
-              const isLast = idx === trace.stages.length - 1;
-              const dotColor =
-                stage.status === 'completed' ? 'bg-success' :
-                stage.status === 'failed' ? 'bg-danger' :
-                stage.status === 'skipped' ? 'bg-warning' :
-                'bg-accent';
-
-              return (
-                <div key={idx} className="relative">
-                  <div className={`absolute -left-[25px] top-1 w-3 h-3 rounded-full ${dotColor} ring-2 ring-surface`} />
-                  <div className="bg-surface-raised rounded-lg p-3 border border-border-subtle">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-content-primary">{stage.stage}</span>
-                      <StatusBadge status={stage.status} />
-                    </div>
-                    <p className="text-xs text-content-muted">
-                      {new Date(stage.timestamp).toLocaleString()}
-                    </p>
-                    {stage.celery_task_id && (
-                      <p className="text-xs text-content-muted mt-1 font-mono">
-                        Task: {stage.celery_task_id.substring(0, 8)}...
-                      </p>
-                    )}
-                    {stage.error && (
-                      <p className="text-xs text-danger mt-1">{stage.error}</p>
-                    )}
-                    {stage.metadata && Object.keys(stage.metadata).length > 0 && (
-                      <div className="mt-2 text-xs text-content-muted bg-surface rounded p-2 font-mono">
-                        {Object.entries(stage.metadata).map(([k, v]) => (
-                          <div key={k}>{k}: {typeof v === 'object' ? JSON.stringify(v) : String(v)}</div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {stageGroups.map((group, idx) => (
+              <StageGroup key={`${group.stageName}-${idx}`} group={group} />
+            ))}
           </div>
 
           {trace.error_message && (
@@ -342,6 +461,7 @@ function SignalTracesPage() {
             <thead>
               <tr className="border-b border-border text-xs font-medium text-content-muted uppercase tracking-wider">
                 <th className="px-4 py-3 text-left">{t('traces.traceId')}</th>
+                <th className="px-4 py-3 text-left">{t('traces.userId')}</th>
                 <th className="px-4 py-3 text-left">{t('traces.pattern')}</th>
                 <th className="px-4 py-3 text-left">{t('traces.symbol')}</th>
                 <th className="px-4 py-3 text-left">{t('traces.side')}</th>
@@ -361,6 +481,9 @@ function SignalTracesPage() {
                   >
                     <td className="px-4 py-3 text-sm font-mono text-content-accent">
                       {trace.trace_id.substring(0, 8)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-content-secondary">
+                      {trace.user_id || '-'}
                     </td>
                     <td className="px-4 py-3 text-sm text-content-secondary">{trace.pattern}</td>
                     <td className="px-4 py-3 text-sm text-content-primary font-medium">
@@ -385,7 +508,7 @@ function SignalTracesPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-content-muted text-sm">
+                  <td colSpan={9} className="px-4 py-12 text-center text-content-muted text-sm">
                     {hasFilters ? t('traces.noMatchingTraces') : t('traces.noTraces')}
                   </td>
                 </tr>
