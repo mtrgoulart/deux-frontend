@@ -176,6 +176,7 @@ const navSectionsConfig = {
     allowedGroups: ['Admin'],
     links: [
       { path: '/users', labelKey: 'nav.users', icon: IconUsers },
+      { path: '/admin/traces', labelKey: 'nav.signalTraces', icon: IconZap },
     ]
   },
   automation: {

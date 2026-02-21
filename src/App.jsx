@@ -23,6 +23,7 @@ import CopyDetailPage from './pages/CopyDetailPage';
 import CopySubscriptionPage from './pages/CopySubscriptionPage';
 import MarketChartPage from './pages/MarketChartPage';
 import WalletPage from './pages/WalletPage';
+import SignalTracesPage from './pages/SignalTracesPage';
 
 function App() {
   return (
@@ -64,6 +65,7 @@ function App() {
             {/* Rota apenas para Admin */}
             <Route element={<ProtectedRoute allowedGroups={['Admin']} />}>
               <Route path="users" element={<UsersPage />} />
+              <Route path="admin/traces" element={<SignalTracesPage />} />
             </Route>
             
           </Route>
