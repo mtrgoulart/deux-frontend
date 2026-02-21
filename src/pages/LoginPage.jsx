@@ -46,17 +46,55 @@ function LoginPage() {
       if (typeof window.ethereum === 'undefined') {
         throw { code: 'NO_METAMASK' };
       }
+
+      // 1. Connect MetaMask and get wallet address + chain ID
       const provider = new ethers.BrowserProvider(window.ethereum);
       await provider.send('eth_requestAccounts', []);
       const signer = await provider.getSigner();
       const walletAddress = await signer.getAddress();
-      const message = `Please sign this message to log in. Nonce: ${Date.now()}`;
-      const signature = await signer.signMessage(message);
+      const network = await provider.getNetwork();
+      const chainId = Number(network.chainId);
 
+      // 2. Fetch server-side nonce
+      const nonceResponse = await apiFetch(`/auth/wallet-nonce?wallet_address=${walletAddress}`);
+      if (!nonceResponse.ok) {
+        const errData = await nonceResponse.json().catch(() => ({}));
+        throw new Error(errData.error || t('auth.errors.walletLoginFailed'));
+      }
+      const { nonce } = await nonceResponse.json();
+
+      // 3. Construct EIP-4361 SIWE message
+      const domain = window.location.host;
+      const origin = window.location.origin;
+      const issuedAt = new Date().toISOString();
+      const expirationTime = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+
+      const siweMessage = [
+        `${domain} wants you to sign in with your Ethereum account:`,
+        walletAddress,
+        '',
+        'Sign in to TradeX',
+        '',
+        `URI: ${origin}`,
+        'Version: 1',
+        `Chain ID: ${chainId}`,
+        `Nonce: ${nonce}`,
+        `Issued At: ${issuedAt}`,
+        `Expiration Time: ${expirationTime}`,
+      ].join('\n');
+
+      // 4. Sign with MetaMask
+      const signature = await signer.signMessage(siweMessage);
+
+      // 5. POST to wallet-login
       const response = await apiFetch('/auth/wallet-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wallet_address: walletAddress, signature, message }),
+        body: JSON.stringify({
+          wallet_address: walletAddress,
+          signature,
+          message: siweMessage,
+        }),
       });
       if (response.ok) {
         const data = await response.json();
