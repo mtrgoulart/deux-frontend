@@ -744,6 +744,7 @@
   "traces": {
     "title": "Rastreamento de Sinais",
     "subtitle": "Observabilidade do pipeline ponta a ponta",
+    "subtitleUser": "Histórico de processamento dos seus sinais",
     "loadingTitle": "Carregando...",
     "loadingDescription": "Rastreamento de Sinais",
     "totalSignals": "Total de Sinais",

@@ -10,7 +10,6 @@ import HomePage from './pages/HomePage'; // Importa a nova Home Page
 import StrategyPage from './pages/StrategyPage';
 import ConfigurationPage from './pages/ConfigurationPage';
 import ApiKeysPage from './pages/APIKeysPage';
-import SignalsPage from './pages/SignalsPage';
 import IndicatorsPage from './pages/IndicatorsPage';
 import OperationsPage from './pages/OperationsPage';
 import PositionsPage from './pages/PositionsPage';
@@ -41,7 +40,7 @@ function App() {
             
             {/* Rotas Públicas para usuários logados */}
             <Route path="/market/data" element={<MarketChartPage />} />
-            <Route path="signals" element={<SignalsPage />} />
+            <Route path="signals" element={<SignalTracesPage mode="user" />} />
             <Route path="operations" element={<OperationsPage />} />
             <Route path="positions" element={<PositionsPage />} />
 

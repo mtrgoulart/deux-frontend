@@ -95,6 +95,14 @@ module.exports = {
           '0%': { opacity: '0', transform: 'translateX(-8px)' },
           '100%': { opacity: '1', transform: 'translateX(0)' },
         },
+        'fadeIn': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        'modalSlideIn': {
+          '0%': { opacity: '0', transform: 'translateY(16px) scale(0.97)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 0.3s ease-in-out',
@@ -108,6 +116,8 @@ module.exports = {
         'slide-in-scale': 'slide-in-scale 0.6s ease-out',
         'particle-rise': 'particle-rise 15s linear infinite',
         'nav-item-in': 'nav-item-in 0.25s ease-out forwards',
+        'fadeIn': 'fadeIn 0.25s ease-out both',
+        'modalSlideIn': 'modalSlideIn 0.3s ease-out both',
       }
     },
   },

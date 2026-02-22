@@ -744,6 +744,7 @@
   "traces": {
     "title": "Rastreo de Señales",
     "subtitle": "Observabilidad del pipeline de extremo a extremo",
+    "subtitleUser": "Historial de procesamiento de sus señales",
     "loadingTitle": "Cargando...",
     "loadingDescription": "Rastreo de Señales",
     "totalSignals": "Total de Señales",

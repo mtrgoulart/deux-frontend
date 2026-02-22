@@ -744,6 +744,7 @@
   "traces": {
     "title": "Signal Traces",
     "subtitle": "End-to-end pipeline observability",
+    "subtitleUser": "Your signal processing history",
     "loadingTitle": "Loading...",
     "loadingDescription": "Signal Traces",
     "totalSignals": "Total Signals",
