@@ -244,6 +244,22 @@ function TraceDetailModal({ trace, onClose }) {
               {trace.duration_seconds != null ? `${trace.duration_seconds}s` : '-'}
             </p>
           </div>
+          <div>
+            <span className="text-content-muted text-xs">{t('traces.exchange')}</span>
+            <p className="text-content-primary font-medium">{trace.exchange_name || '-'}</p>
+          </div>
+          <div>
+            <span className="text-content-muted text-xs">{t('traces.qty')}</span>
+            <p className="text-content-primary font-medium">{trace.operation?.size || '-'}</p>
+          </div>
+          <div>
+            <span className="text-content-muted text-xs">{t('traces.execPrice')}</span>
+            <p className="text-content-primary font-medium">{trace.operation?.execution_price || '-'}</p>
+          </div>
+          <div>
+            <span className="text-content-muted text-xs">{t('traces.opStatus')}</span>
+            <p className="text-content-primary font-medium">{trace.operation?.status || '-'}</p>
+          </div>
         </div>
 
         {/* Timeline */}

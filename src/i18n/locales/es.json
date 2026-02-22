@@ -776,7 +776,11 @@
     "errorMessage": "Error",
     "close": "Cerrar",
     "userId": "Usuario",
-    "rawMessage": "Mensaje Original"
+    "rawMessage": "Mensaje Original",
+    "exchange": "Exchange",
+    "qty": "Cant",
+    "execPrice": "Precio Ejec",
+    "opStatus": "Estado Op"
   },
   "copySubscription": {
     "title": "Mis Suscripciones",
