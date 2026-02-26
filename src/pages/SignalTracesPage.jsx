@@ -136,6 +136,33 @@ function getStageIcon(stageName) {
   );
 }
 
+// ─── Collapsible JSON Block ──────────────────────────────────────────────────
+
+const HIDDEN_METADATA_KEYS = ['raw_message', 'exchange_request', 'exchange_response'];
+
+function CollapsibleJsonBlock({ label, data }) {
+  const [open, setOpen] = useState(false);
+  if (!data) return null;
+  const formatted = JSON.stringify(data, null, 2);
+  return (
+    <div className="mt-2">
+      <button onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 text-xs font-semibold text-content-secondary hover:text-content-primary transition-colors">
+        <svg className={`w-3 h-3 transition-transform duration-200 ${open ? 'rotate-90' : ''}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+        {label}
+      </button>
+      {open && (
+        <pre className="mt-1 text-xs text-content-primary bg-surface rounded p-2 font-mono whitespace-pre-wrap break-all border border-border-subtle max-h-60 overflow-y-auto animate-fadeIn">
+          {formatted}
+        </pre>
+      )}
+    </div>
+  );
+}
+
 // ─── Stage Group Component ──────────────────────────────────────────────────
 
 function StageGroup({ group, index }) {
@@ -247,15 +274,17 @@ function StageGroup({ group, index }) {
               {firstEntry.error && (
                 <p className="text-xs text-danger mt-1">{firstEntry.error}</p>
               )}
-              {firstEntry.metadata && Object.keys(firstEntry.metadata).filter(k => k !== 'raw_message').length > 0 && (
+              {firstEntry.metadata && Object.keys(firstEntry.metadata).filter(k => !HIDDEN_METADATA_KEYS.includes(k)).length > 0 && (
                 <div className="mt-2 text-xs text-content-muted bg-surface rounded p-2 font-mono">
                   {Object.entries(firstEntry.metadata)
-                    .filter(([k]) => k !== 'raw_message')
+                    .filter(([k]) => !HIDDEN_METADATA_KEYS.includes(k))
                     .map(([k, v]) => (
                       <div key={k}>{k}: {typeof v === 'object' ? JSON.stringify(v) : String(v)}</div>
                     ))}
                 </div>
               )}
+              <CollapsibleJsonBlock label={t('traces.exchangeRequest')} data={firstEntry.metadata?.exchange_request} />
+              <CollapsibleJsonBlock label={t('traces.exchangeResponse')} data={firstEntry.metadata?.exchange_response} />
             </>
           )}
 
@@ -298,15 +327,17 @@ function StageGroup({ group, index }) {
                       {entry.error && (
                         <p className="text-xs text-danger mt-1">{entry.error}</p>
                       )}
-                      {entry.metadata && Object.keys(entry.metadata).filter(k => k !== 'raw_message').length > 0 && (
+                      {entry.metadata && Object.keys(entry.metadata).filter(k => !HIDDEN_METADATA_KEYS.includes(k)).length > 0 && (
                         <div className="mt-1.5 text-xs text-content-muted bg-surface-raised rounded p-1.5 font-mono">
                           {Object.entries(entry.metadata)
-                            .filter(([k]) => k !== 'raw_message')
+                            .filter(([k]) => !HIDDEN_METADATA_KEYS.includes(k))
                             .map(([k, v]) => (
                               <div key={k}>{k}: {typeof v === 'object' ? JSON.stringify(v) : String(v)}</div>
                             ))}
                         </div>
                       )}
+                      <CollapsibleJsonBlock label={t('traces.exchangeRequest')} data={entry.metadata?.exchange_request} />
+                      <CollapsibleJsonBlock label={t('traces.exchangeResponse')} data={entry.metadata?.exchange_response} />
                     </div>
                   );
                 })}

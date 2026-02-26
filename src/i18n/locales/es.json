@@ -781,7 +781,9 @@
     "exchange": "Exchange",
     "qty": "Cant",
     "execPrice": "Precio Ejec",
-    "opStatus": "Estado Op"
+    "opStatus": "Estado Op",
+    "exchangeRequest": "Solicitud al Exchange",
+    "exchangeResponse": "Respuesta del Exchange"
   },
   "copySubscription": {
     "title": "Mis Suscripciones",

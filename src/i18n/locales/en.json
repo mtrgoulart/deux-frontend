@@ -781,7 +781,9 @@
     "exchange": "Exchange",
     "qty": "Qty",
     "execPrice": "Exec Price",
-    "opStatus": "Op Status"
+    "opStatus": "Op Status",
+    "exchangeRequest": "Exchange Request",
+    "exchangeResponse": "Exchange Response"
   },
   "copySubscription": {
     "title": "My Subscriptions",

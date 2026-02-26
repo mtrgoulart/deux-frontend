@@ -781,7 +781,9 @@
     "exchange": "Exchange",
     "qty": "Qtd",
     "execPrice": "Preço Exec",
-    "opStatus": "Status Op"
+    "opStatus": "Status Op",
+    "exchangeRequest": "Requisição da Exchange",
+    "exchangeResponse": "Resposta da Exchange"
   },
   "copySubscription": {
     "title": "Minhas Assinaturas",
