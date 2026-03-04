@@ -5,7 +5,8 @@ import { apiFetch } from '../utils/api';
 
 function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoading }) {
     const { t } = useTranslation();
-    const [selectedSharings, setSelectedSharings] = useState([]);
+    // Per-sharing config: { [sharingId]: { selected, size_mode, size_value } }
+    const [sharingConfigs, setSharingConfigs] = useState({});
     const [selectedApiKey, setSelectedApiKey] = useState('');
     const [sizeAmount, setSizeAmount] = useState('10');
 
@@ -14,8 +15,13 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
     const { data: userSubscriptionsData, isLoading: isLoadingSubscriptions } = useQuery({ queryKey: ['copytrading_subscriptions'], queryFn: async () => { const res = await apiFetch('/copytrading/subscriptions'); const data = await res.json(); return data.subscriptions || []; }, enabled: isEditing, });
 
     useEffect(() => {
-        if (!isEditing && details?.sharing_ids) {
-            setSelectedSharings(details.sharing_ids);
+        if (!isEditing && details?.sharings) {
+            // New subscription: select all sharings with default percentage 100
+            const configs = {};
+            details.sharings.forEach(s => {
+                configs[s.id] = { selected: true, size_mode: 'percentage', size_value: '100' };
+            });
+            setSharingConfigs(configs);
             return;
         }
 
@@ -26,26 +32,72 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
                 setSelectedApiKey(primarySub.api_key_id);
                 setSizeAmount(primarySub.max_amount_size || '10');
 
-                if (primarySub.subscribed_sharing_ids) {
-                    setSelectedSharings(primarySub.subscribed_sharing_ids);
+                // Populate from subscribed_sharings (jsonb array)
+                const configs = {};
+                // Initialize all sharings as unselected
+                if (details?.sharings) {
+                    details.sharings.forEach(s => {
+                        configs[s.id] = { selected: false, size_mode: 'percentage', size_value: '100' };
+                    });
                 }
+                // Mark subscribed ones with their config
+                if (primarySub.subscribed_sharings) {
+                    primarySub.subscribed_sharings.forEach(s => {
+                        configs[s.sharing_id] = {
+                            selected: true,
+                            size_mode: s.size_mode || 'percentage',
+                            size_value: String(s.size_amount || 100)
+                        };
+                    });
+                }
+                setSharingConfigs(configs);
             }
         }
     }, [isEditing, details, userSubscriptionsData, isLoadingSubscriptions, copyConfig.id]);
 
     const handleToggleSharing = (sharingId) => {
-        setSelectedSharings(prev => prev.includes(sharingId) ? prev.filter(id => id !== sharingId) : [...prev, sharingId]);
+        setSharingConfigs(prev => ({
+            ...prev,
+            [sharingId]: {
+                ...prev[sharingId],
+                selected: !prev[sharingId]?.selected,
+                size_mode: prev[sharingId]?.size_mode || 'percentage',
+                size_value: prev[sharingId]?.size_value || '100'
+            }
+        }));
+    };
+
+    const handleSharingConfigChange = (sharingId, field, value) => {
+        setSharingConfigs(prev => ({
+            ...prev,
+            [sharingId]: { ...prev[sharingId], [field]: value }
+        }));
     };
 
     const handleConfirmCopy = () => {
         if (!selectedApiKey) { alert(t('copyExplore.selectApiKeyAlert')); return; }
         const numericSize = parseFloat(sizeAmount);
         if (isNaN(numericSize) || numericSize <= 0) { alert(t('copyExplore.validInvestmentAlert')); return; }
-        if (selectedSharings.length === 0) { alert(t('copyExplore.selectSharingAlert')); return; }
+
+        const selectedEntries = Object.entries(sharingConfigs).filter(([_, c]) => c.selected);
+        if (selectedEntries.length === 0) { alert(t('copyExplore.selectSharingAlert')); return; }
+
+        // Validate per-sharing size values
+        for (const [id, config] of selectedEntries) {
+            const val = parseFloat(config.size_value);
+            if (isNaN(val) || val <= 0) {
+                alert(t('copyExplore.validSizeValueAlert'));
+                return;
+            }
+        }
 
         const payload = {
             copytrading_id_origin: copyConfig.id,
-            sharing_ids: selectedSharings,
+            sharings: selectedEntries.map(([id, c]) => ({
+                sharing_id: parseInt(id),
+                size_mode: c.size_mode,
+                size_value: parseFloat(c.size_value)
+            })),
             api_key_id: selectedApiKey,
             size_amount: numericSize,
         };
@@ -109,12 +161,12 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
                         </div>
                     </div>
 
-                    {/* Sharings selection */}
+                    {/* Sharings selection with per-sharing sizing */}
                     <div>
                         <label className="block text-xs font-semibold text-content-accent mb-3 uppercase tracking-wider">
                             {t('copyExplore.selectSharings')}
                         </label>
-                        <div className="bg-surface-primary border border-border rounded-lg p-3 max-h-60 overflow-y-auto space-y-2">
+                        <div className="bg-surface-primary border border-border rounded-lg p-3 max-h-80 overflow-y-auto space-y-2">
                             {isLoadingDetails ? (
                                 <div className="py-6 flex flex-col items-center gap-3">
                                     <div className="flex items-end justify-center gap-1 h-8">
@@ -140,26 +192,62 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
                                 </div>
                             ) : (
                                 details?.sharings?.map(sharing => {
-                                    const isSelected = selectedSharings.includes(sharing.id);
+                                    const config = sharingConfigs[sharing.id] || {};
+                                    const isSelected = !!config.selected;
+                                    const pnl = sharing.pnl || 0;
                                     return (
-                                        <div
-                                            key={sharing.id}
-                                            onClick={() => handleToggleSharing(sharing.id)}
-                                            className={`p-3 rounded-lg cursor-pointer transition-all duration-200 flex items-center gap-3 border ${
-                                                isSelected
-                                                    ? 'bg-accent-muted border-border-accent text-content-primary'
-                                                    : 'bg-surface border-border hover:bg-surface-raised hover:border-border-accent/50 text-content-secondary'
-                                            }`}
-                                        >
-                                            <div className={`w-4 h-4 rounded-sm border-2 flex-shrink-0 transition-all ${
-                                                isSelected ? 'bg-accent border-accent' : 'border-content-muted'
-                                            }`}>
-                                                {isSelected && (
-                                                    <div className="w-full h-full flex items-center justify-center text-white text-xs">✓</div>
-                                                )}
+                                        <div key={sharing.id} className="space-y-2">
+                                            <div
+                                                onClick={() => handleToggleSharing(sharing.id)}
+                                                className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border ${
+                                                    isSelected
+                                                        ? 'bg-accent-muted border-border-accent text-content-primary'
+                                                        : 'bg-surface border-border hover:bg-surface-raised hover:border-border-accent/50 text-content-secondary'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-4 h-4 rounded-sm border-2 flex-shrink-0 transition-all ${
+                                                        isSelected ? 'bg-accent border-accent' : 'border-content-muted'
+                                                    }`}>
+                                                        {isSelected && (
+                                                            <div className="w-full h-full flex items-center justify-center text-white text-xs">✓</div>
+                                                        )}
+                                                    </div>
+                                                    <span className="font-bold truncate">{sharing.instance_name}</span>
+                                                    <span className="text-xs text-content-muted font-mono">({sharing.symbol})</span>
+                                                    <span className={`text-xs font-semibold ml-auto ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {t('copyExplore.pnl')}: {pnl >= 0 ? '+' : ''}{typeof pnl === 'number' ? pnl.toFixed(2) : pnl} USDT
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <span className="font-bold truncate">{sharing.instance_name}</span>
-                                            <span className="text-xs text-content-muted ml-auto font-mono">({sharing.symbol})</span>
+                                            {/* Per-sharing sizing controls (only when selected) */}
+                                            {isSelected && (
+                                                <div className="ml-7 flex items-center gap-3 pb-1">
+                                                    <select
+                                                        value={config.size_mode || 'percentage'}
+                                                        onChange={e => handleSharingConfigChange(sharing.id, 'size_mode', e.target.value)}
+                                                        onClick={e => e.stopPropagation()}
+                                                        className="px-3 py-1.5 bg-surface border border-border text-content-primary rounded text-xs
+                                                                 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors"
+                                                    >
+                                                        <option value="percentage">{t('copyExplore.percentage')}</option>
+                                                        <option value="flat_value">{t('copyExplore.flatValue')}</option>
+                                                    </select>
+                                                    <input
+                                                        type="number"
+                                                        value={config.size_value || ''}
+                                                        onChange={e => handleSharingConfigChange(sharing.id, 'size_value', e.target.value)}
+                                                        onClick={e => e.stopPropagation()}
+                                                        className="w-24 px-3 py-1.5 bg-surface border border-border text-content-primary rounded text-xs
+                                                                 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors"
+                                                        placeholder={config.size_mode === 'flat_value' ? 'USDT' : '%'}
+                                                        min="0"
+                                                    />
+                                                    <span className="text-xs text-content-muted">
+                                                        {config.size_mode === 'flat_value' ? 'USDT' : '%'}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })
