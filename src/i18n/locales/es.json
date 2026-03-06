@@ -519,6 +519,8 @@
     "percentage": "Porcentaje",
     "flatValue": "Valor Fijo (USDT)",
     "pnl": "PnL",
+    "sizing": "Dimensionamiento",
+    "percentageRangeAlert": "El porcentaje debe estar entre 0 y 100.",
     "confirmExit": "Confirmar Salida",
     "exitConfirmMessage": "¿Está seguro que desea salir de esta configuración?",
     "warningCannotUndo": "Esta acción no se puede deshacer",

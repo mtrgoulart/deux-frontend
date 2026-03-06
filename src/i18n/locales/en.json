@@ -519,6 +519,8 @@
     "percentage": "Percentage",
     "flatValue": "Flat Value (USDT)",
     "pnl": "PnL",
+    "sizing": "Sizing",
+    "percentageRangeAlert": "Percentage must be between 0 and 100.",
     "confirmExit": "Confirm Exit",
     "exitConfirmMessage": "Are you sure you want to exit this configuration?",
     "warningCannotUndo": "This action cannot be undone",

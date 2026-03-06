@@ -74,6 +74,12 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
         }));
     };
 
+    const isPercentageInvalid = (config) => {
+        if (config.size_mode !== 'percentage') return false;
+        const val = parseFloat(config.size_value);
+        return isNaN(val) || val < 0 || val > 100;
+    };
+
     const handleConfirmCopy = () => {
         if (!selectedApiKey) { alert(t('copyExplore.selectApiKeyAlert')); return; }
         const numericSize = parseFloat(sizeAmount);
@@ -87,6 +93,10 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
             const val = parseFloat(config.size_value);
             if (isNaN(val) || val <= 0) {
                 alert(t('copyExplore.validSizeValueAlert'));
+                return;
+            }
+            if (config.size_mode === 'percentage' && (val < 0 || val > 100)) {
+                alert(t('copyExplore.percentageRangeAlert'));
                 return;
             }
         }
@@ -195,57 +205,83 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
                                     const config = sharingConfigs[sharing.id] || {};
                                     const isSelected = !!config.selected;
                                     const pnl = sharing.pnl || 0;
+                                    const percentInvalid = isSelected && isPercentageInvalid(config);
                                     return (
-                                        <div key={sharing.id} className="space-y-2">
-                                            <div
-                                                onClick={() => handleToggleSharing(sharing.id)}
-                                                className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border ${
-                                                    isSelected
-                                                        ? 'bg-accent-muted border-border-accent text-content-primary'
-                                                        : 'bg-surface border-border hover:bg-surface-raised hover:border-border-accent/50 text-content-secondary'
-                                                }`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-4 h-4 rounded-sm border-2 flex-shrink-0 transition-all ${
-                                                        isSelected ? 'bg-accent border-accent' : 'border-content-muted'
-                                                    }`}>
-                                                        {isSelected && (
-                                                            <div className="w-full h-full flex items-center justify-center text-white text-xs">✓</div>
-                                                        )}
-                                                    </div>
-                                                    <span className="font-bold truncate">{sharing.instance_name}</span>
-                                                    <span className="text-xs text-content-muted font-mono">({sharing.symbol})</span>
-                                                    <span className={`text-xs font-semibold ml-auto ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                        {t('copyExplore.pnl')}: {pnl >= 0 ? '+' : ''}{typeof pnl === 'number' ? pnl.toFixed(2) : pnl} USDT
+                                        <div
+                                            key={sharing.id}
+                                            onClick={() => handleToggleSharing(sharing.id)}
+                                            className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border ${
+                                                isSelected
+                                                    ? 'bg-accent-muted border-border-accent text-content-primary'
+                                                    : 'bg-surface border-border hover:bg-surface-raised hover:border-border-accent/50 text-content-secondary'
+                                            }`}
+                                        >
+                                            {/* Top row: checkbox + name + symbol badge */}
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-4 h-4 rounded-sm border-2 flex-shrink-0 transition-all ${
+                                                    isSelected ? 'bg-accent border-accent' : 'border-content-muted'
+                                                }`}>
+                                                    {isSelected && (
+                                                        <div className="w-full h-full flex items-center justify-center text-white text-xs">✓</div>
+                                                    )}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <span className="font-bold truncate block">{sharing.instance_name}</span>
+                                                    <span className="inline-block mt-0.5 px-2 py-0.5 text-xs font-mono bg-surface-raised/60 text-content-muted rounded">
+                                                        {sharing.symbol}
                                                     </span>
                                                 </div>
                                             </div>
-                                            {/* Per-sharing sizing controls (only when selected) */}
+
+                                            {/* Bottom section: PnL + Sizing (only when selected) */}
                                             {isSelected && (
-                                                <div className="ml-7 flex items-center gap-3 pb-1">
-                                                    <select
-                                                        value={config.size_mode || 'percentage'}
-                                                        onChange={e => handleSharingConfigChange(sharing.id, 'size_mode', e.target.value)}
-                                                        onClick={e => e.stopPropagation()}
-                                                        className="px-3 py-1.5 bg-surface border border-border text-content-primary rounded text-xs
-                                                                 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors"
-                                                    >
-                                                        <option value="percentage">{t('copyExplore.percentage')}</option>
-                                                        <option value="flat_value">{t('copyExplore.flatValue')}</option>
-                                                    </select>
-                                                    <input
-                                                        type="number"
-                                                        value={config.size_value || ''}
-                                                        onChange={e => handleSharingConfigChange(sharing.id, 'size_value', e.target.value)}
-                                                        onClick={e => e.stopPropagation()}
-                                                        className="w-24 px-3 py-1.5 bg-surface border border-border text-content-primary rounded text-xs
-                                                                 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors"
-                                                        placeholder={config.size_mode === 'flat_value' ? 'USDT' : '%'}
-                                                        min="0"
-                                                    />
-                                                    <span className="text-xs text-content-muted">
-                                                        {config.size_mode === 'flat_value' ? 'USDT' : '%'}
-                                                    </span>
+                                                <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-border-subtle" onClick={e => e.stopPropagation()}>
+                                                    {/* PnL column */}
+                                                    <div>
+                                                        <span className="text-xs text-content-muted uppercase tracking-wider">{t('copyExplore.pnl')}</span>
+                                                        <div className="mt-1">
+                                                            <span className={`text-base font-bold ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                                {pnl >= 0 ? '+' : ''}{typeof pnl === 'number' ? pnl.toFixed(2) : pnl}
+                                                            </span>
+                                                            <span className="text-xs text-content-muted ml-1">USDT</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Sizing column */}
+                                                    <div>
+                                                        <span className="text-xs text-content-muted uppercase tracking-wider">{t('copyExplore.sizing')}</span>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <select
+                                                                value={config.size_mode || 'percentage'}
+                                                                onChange={e => handleSharingConfigChange(sharing.id, 'size_mode', e.target.value)}
+                                                                className="px-2 py-1.5 bg-surface border border-border text-content-primary rounded text-xs
+                                                                         focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors"
+                                                            >
+                                                                <option value="percentage">{t('copyExplore.percentage')}</option>
+                                                                <option value="flat_value">{t('copyExplore.flatValue')}</option>
+                                                            </select>
+                                                            <input
+                                                                type="number"
+                                                                value={config.size_value || ''}
+                                                                onChange={e => handleSharingConfigChange(sharing.id, 'size_value', e.target.value)}
+                                                                className={`w-20 px-2 py-1.5 bg-surface border text-content-primary rounded text-xs
+                                                                         focus:outline-none focus:ring-1 transition-colors ${
+                                                                    percentInvalid
+                                                                        ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20'
+                                                                        : 'border-border focus:border-accent focus:ring-accent/20'
+                                                                }`}
+                                                                placeholder={config.size_mode === 'flat_value' ? 'USDT' : '%'}
+                                                                min="0"
+                                                                {...(config.size_mode === 'percentage' ? { max: '100' } : {})}
+                                                            />
+                                                            <span className="text-xs text-content-muted">
+                                                                {config.size_mode === 'flat_value' ? 'USDT' : '%'}
+                                                            </span>
+                                                        </div>
+                                                        {percentInvalid && (
+                                                            <p className="text-xs text-red-400 mt-1">0-100%</p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
