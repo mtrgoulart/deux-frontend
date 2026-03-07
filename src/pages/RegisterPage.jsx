@@ -29,7 +29,7 @@ function RegisterPage() {
     },
     onSuccess: () => {
       setSuccess(true);
-      setTimeout(() => navigate('/login'), 2000);
+      setTimeout(() => navigate('/login'), 2500);
     },
     onError: (err) => {
       setError(err.message || t('auth.errors.serverError'));

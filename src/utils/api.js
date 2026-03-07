@@ -1,16 +1,42 @@
 // utils/api.js
 export async function apiFetch(url, options = {}) {
-    const response = await fetch(`/api${url}`, {
+    const token = localStorage.getItem('authToken');
+    const headers = { ...options.headers };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    let response = await fetch(`/api${url}`, {
       ...options,
-      credentials: 'include', // importante se estiver usando cookies para sessão
+      headers,
+      credentials: 'include',
     });
-  
-    if (response.status === 401) {
-      // Redireciona para login se o token estiver expirado ou sessão inválida
-      window.location.href = '/login';
-      return;
+
+    if (response.status === 401 && url !== '/auth/refresh') {
+      // Try refresh
+      const refreshTkn = localStorage.getItem('refreshToken');
+      if (refreshTkn) {
+        const refreshRes = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: refreshTkn }),
+        });
+        if (refreshRes.ok) {
+          const data = await refreshRes.json();
+          localStorage.setItem('authToken', data.access_token);
+          localStorage.setItem('refreshToken', data.refresh_token);
+          headers['Authorization'] = `Bearer ${data.access_token}`;
+          response = await fetch(`/api${url}`, { ...options, headers, credentials: 'include' });
+        } else {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('refreshToken');
+          window.location.href = '/login';
+          return;
+        }
+      } else {
+        localStorage.removeItem('authToken');
+        window.location.href = '/login';
+        return;
+      }
     }
-  
+
     return response;
   }
-  

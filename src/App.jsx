@@ -5,8 +5,10 @@ import ProtectedRoute from './components/ProtectedRoute';
 // Páginas
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import Verify2FAPage from './pages/Verify2FAPage';
+import Setup2FAPage from './pages/Setup2FAPage';
 import SidebarLayout from './components/SidebarLayout';
-import HomePage from './pages/HomePage'; // Importa a nova Home Page
+import HomePage from './pages/HomePage';
 import StrategyPage from './pages/StrategyPage';
 import ConfigurationPage from './pages/ConfigurationPage';
 import ApiKeysPage from './pages/APIKeysPage';
@@ -31,13 +33,14 @@ function App() {
         {/* Rotas Públicas */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/verify-2fa" element={<Verify2FAPage />} />
 
         {/* Rotas Protegidas */}
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<SidebarLayout />}>
             {/* Rota Raiz agora aponta para a HomePage */}
             <Route index element={<HomePage />} />
-            
+
             {/* Rotas Públicas para usuários logados */}
             <Route path="/market/data" element={<MarketChartPage />} />
             <Route path="signals" element={<SignalTracesPage mode="user" />} />
@@ -47,10 +50,11 @@ function App() {
             <Route path="copy/explore" element={<ExplorePage />} />
             <Route path="copy/details/:id" element={<CopyDetailPage />} />
             <Route path="copy/subscriptions" element={<CopySubscriptionPage />} />
-            
+
             {/* Rotas de usuário */}
             <Route path="/user/apikeys" element={<ApiKeysPage />} />
             <Route path="/user/wallet" element={<WalletPage />} />
+            <Route path="/settings/security" element={<Setup2FAPage />} />
 
             {/* Rotas apenas para Admin e Developer */}
             <Route element={<ProtectedRoute allowedGroups={['Admin', 'Developer']} />}>
@@ -66,7 +70,7 @@ function App() {
               <Route path="users" element={<UsersPage />} />
               <Route path="admin/traces" element={<SignalTracesPage />} />
             </Route>
-            
+
           </Route>
         </Route>
       </Routes>

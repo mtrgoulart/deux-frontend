@@ -666,7 +666,8 @@
       "unknownError": "An unknown error occurred.",
       "passwordMismatch": "Passwords do not match.",
       "registrationFailed": "Failed to register user.",
-      "serverError": "Error connecting to the server."
+      "serverError": "Error connecting to the server.",
+    "passwordResetRequired": "We've upgraded our security system. Please set a new password on your next login."
     }
   },
   "apiKeys": {
@@ -812,5 +813,32 @@
     "exit": "Exit Subscription",
     "noSubscriptions": "You have no active subscriptions",
     "noSubscriptionsHint": "Go to the Explore page to find copy trading configurations"
+  },
+  "twoFactor": {
+    "verifyTitle": "Two-Factor Authentication",
+    "enterCode": "Enter the 6-digit code from your authenticator app",
+    "codePlaceholder": "000000",
+    "verify": "Verify",
+    "invalidCode": "Invalid verification code. Please try again.",
+    "backToLogin": "Back to login",
+    "setupTitle": "Set Up Two-Factor Authentication",
+    "setupDescription": "Add an extra layer of security to your account using an authenticator app.",
+    "setupInstructions": "Click the button below to enable 2FA. On your next login, you will be prompted to scan a QR code with your authenticator app (Google Authenticator, Authy, etc.).",
+    "setupInitiated": "2FA Setup Initiated",
+    "setupNextLogin": "On your next login, you will be guided through the authenticator app setup process.",
+    "done": "Done",
+    "enableButton": "Enable 2FA",
+    "disableButton": "Disable 2FA",
+    "settingUp": "Setting up...",
+    "cancel": "Cancel",
+    "alreadyEnabled": "Two-factor authentication is already enabled on your account.",
+    "settingsTitle": "Two-Factor Authentication",
+    "settingsDescription": "Protect your account with an authenticator app. You will be asked for a verification code on each login.",
+    "totpLabel": "Authenticator App (TOTP)",
+    "statusEnabled": "Enabled - Your account is protected",
+    "statusDisabled": "Disabled - Not configured",
+    "confirmDisable": "Are you sure you want to disable two-factor authentication? This will make your account less secure.",
+    "enableSuccess": "2FA has been enabled. You will be prompted to set it up on your next login.",
+    "disableSuccess": "2FA has been disabled."
   }
 }

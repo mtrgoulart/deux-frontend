@@ -666,7 +666,8 @@
       "unknownError": "Ocurrió un error desconocido.",
       "passwordMismatch": "Las contraseñas no coinciden.",
       "registrationFailed": "Fallo al registrar el usuario.",
-      "serverError": "Error al conectar con el servidor."
+      "serverError": "Error al conectar con el servidor.",
+    "passwordResetRequired": "Hemos actualizado nuestro sistema de seguridad. Por favor, establezca una nueva contraseña en su próximo inicio de sesión."
     }
   },
   "apiKeys": {
@@ -812,5 +813,32 @@
     "exit": "Salir de la Suscripción",
     "noSubscriptions": "No tiene suscripciones activas",
     "noSubscriptionsHint": "Vaya a la página Explorar para encontrar configuraciones de copy trading"
+  },
+  "twoFactor": {
+    "verifyTitle": "Autenticación de Dos Factores",
+    "enterCode": "Ingrese el código de 6 dígitos de su aplicación de autenticación",
+    "codePlaceholder": "000000",
+    "verify": "Verificar",
+    "invalidCode": "Código de verificación inválido. Intente de nuevo.",
+    "backToLogin": "Volver al inicio de sesión",
+    "setupTitle": "Configurar Autenticación de Dos Factores",
+    "setupDescription": "Agregue una capa extra de seguridad a su cuenta usando una aplicación de autenticación.",
+    "setupInstructions": "Haga clic en el botón de abajo para habilitar 2FA. En su próximo inicio de sesión, se le pedirá escanear un código QR con su aplicación de autenticación (Google Authenticator, Authy, etc.).",
+    "setupInitiated": "Configuración de 2FA Iniciada",
+    "setupNextLogin": "En su próximo inicio de sesión, será guiado a través del proceso de configuración de la aplicación de autenticación.",
+    "done": "Listo",
+    "enableButton": "Habilitar 2FA",
+    "disableButton": "Deshabilitar 2FA",
+    "settingUp": "Configurando...",
+    "cancel": "Cancelar",
+    "alreadyEnabled": "La autenticación de dos factores ya está habilitada en su cuenta.",
+    "settingsTitle": "Autenticación de Dos Factores",
+    "settingsDescription": "Proteja su cuenta con una aplicación de autenticación. Se le pedirá un código de verificación en cada inicio de sesión.",
+    "totpLabel": "Aplicación de Autenticación (TOTP)",
+    "statusEnabled": "Habilitado - Su cuenta está protegida",
+    "statusDisabled": "Deshabilitado - No configurado",
+    "confirmDisable": "¿Está seguro de que desea deshabilitar la autenticación de dos factores? Esto hará que su cuenta sea menos segura.",
+    "enableSuccess": "2FA ha sido habilitado. Se le pedirá configurarlo en su próximo inicio de sesión.",
+    "disableSuccess": "2FA ha sido deshabilitado."
   }
 }

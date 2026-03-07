@@ -12,28 +12,43 @@ import AnimatedBackground from '../components/AnimatedBackground';
 function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [totp, setTotp] = useState('');
+  const [show2FA, setShow2FA] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { login } = useAuth();
   const { t } = useTranslation();
 
   const loginMutation = useMutation({
-    mutationFn: async ({ username, password }) => {
+    mutationFn: async ({ username, password, totp }) => {
+      const body = { username, password };
+      if (totp) body.totp = totp;
+
       const response = await apiFetch('/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify(body),
       });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.token) return data.token;
-        throw new Error(t('auth.errors.noToken'));
+      if (!response) throw new Error(t('auth.errors.serverError'));
+      const data = await response.json();
+
+      if (data.requires_2fa) {
+        return { requires_2fa: true };
       }
-      const errorData = await response.json().catch(() => ({ error: t('auth.errors.invalidCredentials') }));
-      throw new Error(errorData.error);
+      if (data.requires_password_reset) {
+        throw new Error(t('auth.errors.passwordResetRequired'));
+      }
+      if (data.access_token) {
+        return { access_token: data.access_token, refresh_token: data.refresh_token };
+      }
+      throw new Error(data.error || t('auth.errors.invalidCredentials'));
     },
-    onSuccess: (token) => {
-      login(token);
+    onSuccess: (result) => {
+      if (result.requires_2fa) {
+        setShow2FA(true);
+        return;
+      }
+      login(result.access_token, result.refresh_token);
       navigate('/');
     },
     onError: (err) => {
@@ -47,7 +62,6 @@ function LoginPage() {
         throw { code: 'NO_METAMASK' };
       }
 
-      // 1. Connect MetaMask and get wallet address + chain ID
       const provider = new ethers.BrowserProvider(window.ethereum);
       await provider.send('eth_requestAccounts', []);
       const signer = await provider.getSigner();
@@ -55,7 +69,6 @@ function LoginPage() {
       const network = await provider.getNetwork();
       const chainId = Number(network.chainId);
 
-      // 2. Fetch server-side nonce
       const nonceResponse = await apiFetch(`/auth/wallet-nonce?wallet_address=${walletAddress}`);
       if (!nonceResponse.ok) {
         const errData = await nonceResponse.json().catch(() => ({}));
@@ -63,7 +76,6 @@ function LoginPage() {
       }
       const { nonce } = await nonceResponse.json();
 
-      // 3. Construct EIP-4361 SIWE message
       const domain = window.location.host;
       const origin = window.location.origin;
       const issuedAt = new Date().toISOString();
@@ -83,10 +95,8 @@ function LoginPage() {
         `Expiration Time: ${expirationTime}`,
       ].join('\n');
 
-      // 4. Sign with MetaMask
       const signature = await signer.signMessage(siweMessage);
 
-      // 5. POST to wallet-login
       const response = await apiFetch('/auth/wallet-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -98,14 +108,14 @@ function LoginPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        if (data.access_token) return data.access_token;
+        if (data.access_token) return { access_token: data.access_token, refresh_token: data.refresh_token };
         throw new Error(t('auth.errors.noToken'));
       }
       const errorData = await response.json().catch(() => ({ error: t('auth.errors.unknownError') }));
       throw new Error(errorData.error || t('auth.errors.walletLoginFailed'));
     },
-    onSuccess: (token) => {
-      login(token);
+    onSuccess: (result) => {
+      login(result.access_token, result.refresh_token);
       navigate('/');
     },
     onError: (err) => {
@@ -124,7 +134,7 @@ function LoginPage() {
   const handleLogin = (e) => {
     e.preventDefault();
     setError('');
-    loginMutation.mutate({ username, password });
+    loginMutation.mutate({ username, password, totp: show2FA ? totp : undefined });
   };
 
   const handleWalletLogin = () => {
@@ -156,26 +166,55 @@ function LoginPage() {
           )}
 
           <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <input
-                type="text"
-                placeholder={t('auth.usernamePlaceholder')}
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-surface-raised/50 border border-border rounded-lg py-3 px-4 text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
-                required
-              />
-            </div>
-            <div>
-              <input
-                type="password"
-                placeholder={t('auth.passwordPlaceholder')}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-surface-raised/50 border border-border rounded-lg py-3 px-4 text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
-                required
-              />
-            </div>
+            {!show2FA ? (
+              <>
+                <div>
+                  <input
+                    type="text"
+                    placeholder={t('auth.usernamePlaceholder')}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full bg-surface-raised/50 border border-border rounded-lg py-3 px-4 text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
+                    required
+                  />
+                </div>
+                <div>
+                  <input
+                    type="password"
+                    placeholder={t('auth.passwordPlaceholder')}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-surface-raised/50 border border-border rounded-lg py-3 px-4 text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
+                    required
+                  />
+                </div>
+              </>
+            ) : (
+              <div>
+                <p className="text-content-secondary text-sm mb-3 text-center">
+                  {t('twoFactor.enterCode')}
+                </p>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  placeholder={t('twoFactor.codePlaceholder')}
+                  value={totp}
+                  onChange={(e) => setTotp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="w-full bg-surface-raised/50 border border-border rounded-lg py-3 px-4 text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all text-center text-2xl tracking-[0.5em] font-mono"
+                  autoFocus
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => { setShow2FA(false); setTotp(''); setError(''); }}
+                  className="mt-2 text-content-muted text-xs hover:text-content-secondary transition-colors"
+                >
+                  {t('twoFactor.backToLogin')}
+                </button>
+              </div>
+            )}
             <button
               type="submit"
               disabled={isLoading}
@@ -183,41 +222,47 @@ function LoginPage() {
                          shadow-lg shadow-accent/20 hover:shadow-accent/40
                          hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none"
             >
-              <span className="relative z-10">{t('auth.loginButton')}</span>
+              <span className="relative z-10">
+                {show2FA ? t('twoFactor.verify') : t('auth.loginButton')}
+              </span>
               <div className="absolute inset-0 -translate-x-full group-hover:translate-x-[200%] transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
             </button>
           </form>
 
-          <div className="flex items-center my-6">
-            <hr className="flex-grow border-border" />
-            <span className="mx-4 text-content-muted text-sm">{t('auth.or')}</span>
-            <hr className="flex-grow border-border" />
-          </div>
+          {!show2FA && (
+            <>
+              <div className="flex items-center my-6">
+                <hr className="flex-grow border-border" />
+                <span className="mx-4 text-content-muted text-sm">{t('auth.or')}</span>
+                <hr className="flex-grow border-border" />
+              </div>
 
-          <button
-            type="button"
-            onClick={handleWalletLogin}
-            disabled={isLoading}
-            className="w-full flex items-center justify-center gap-3 py-3 font-bold text-content-secondary bg-surface-raised/50 border-2 border-border rounded-lg
-                       hover:border-accent hover:text-content-primary hover:shadow-lg hover:shadow-accent/20
-                       hover:scale-[1.02] active:scale-[0.98] transition-all duration-200
-                       disabled:opacity-50 disabled:pointer-events-none"
-          >
-            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-              <path d="M21 18V19C21 20.1 20.1 21 19 21H5C3.9 21 3 20.1 3 19V5C3 3.9 3.9 3 5 3H19C20.1 3 21 3.9 21 5V6H12C10.9 6 10 6.9 10 8V16C10 17.1 10.9 18 12 18H21ZM12 16H22V8H12V16ZM15 15C15.6 15 16 14.6 16 14C16 13.4 15.6 13 15 13C14.4 13 14 13.4 14 14C14 14.6 14.4 15 15 15Z"/>
-            </svg>
-            {t('auth.walletLogin')}
-          </button>
+              <button
+                type="button"
+                onClick={handleWalletLogin}
+                disabled={isLoading}
+                className="w-full flex items-center justify-center gap-3 py-3 font-bold text-content-secondary bg-surface-raised/50 border-2 border-border rounded-lg
+                           hover:border-accent hover:text-content-primary hover:shadow-lg hover:shadow-accent/20
+                           hover:scale-[1.02] active:scale-[0.98] transition-all duration-200
+                           disabled:opacity-50 disabled:pointer-events-none"
+              >
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M21 18V19C21 20.1 20.1 21 19 21H5C3.9 21 3 20.1 3 19V5C3 3.9 3.9 3 5 3H19C20.1 3 21 3.9 21 5V6H12C10.9 6 10 6.9 10 8V16C10 17.1 10.9 18 12 18H21ZM12 16H22V8H12V16ZM15 15C15.6 15 16 14.6 16 14C16 13.4 15.6 13 15 13C14.4 13 14 13.4 14 14C14 14.6 14.4 15 15 15Z"/>
+                </svg>
+                {t('auth.walletLogin')}
+              </button>
 
-          <p className="text-center text-content-muted text-sm mt-6">
-            {t('auth.noAccount')}{' '}
-            <Link
-              to="/register"
-              className="text-content-accent hover:text-accent font-medium transition-colors"
-            >
-              {t('auth.registerLink')}
-            </Link>
-          </p>
+              <p className="text-center text-content-muted text-sm mt-6">
+                {t('auth.noAccount')}{' '}
+                <Link
+                  to="/register"
+                  className="text-content-accent hover:text-accent font-medium transition-colors"
+                >
+                  {t('auth.registerLink')}
+                </Link>
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>
