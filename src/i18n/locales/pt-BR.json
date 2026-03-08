@@ -658,7 +658,7 @@
     "registrationSuccess": "Registro Realizado com Sucesso!",
     "redirecting": "Redirecionando para o login...",
     "errors": {
-      "invalidCredentials": "Credenciais inválidas",
+      "invalidCredentials": "Usuário ou senha incorretos. Verifique e tente novamente.",
       "noToken": "Falha no login: Nenhum token recebido.",
       "metamaskNotInstalled": "MetaMask não está instalado. Instale-o para usar este recurso.",
       "walletRejected": "Você rejeitou a solicitação de conexão. Aprove-a para fazer login.",
