@@ -13,6 +13,7 @@ function Setup2FAPage() {
   const [recoveryCodes, setRecoveryCodes] = useState([]);
   const [savedConfirmation, setSavedConfirmation] = useState(false);
   const [disableCode, setDisableCode] = useState('');
+  const [disableUseRecovery, setDisableUseRecovery] = useState(false);
   const [error, setError] = useState('');
   const [secretCopied, setSecretCopied] = useState(false);
   const navigate = useNavigate();
@@ -149,32 +150,56 @@ function Setup2FAPage() {
               {t('twoFactor.alreadyEnabled')}
             </div>
 
+            <p className="text-content-muted text-xs text-center">
+              {t('twoFactor.disableConfirm')}
+            </p>
+
             <div className="space-y-3">
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                maxLength={6}
-                placeholder={t('twoFactor.codePlaceholder')}
-                value={disableCode}
-                onChange={(e) => setDisableCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                className="w-full bg-surface-raised/50 border border-border rounded-lg py-3 px-4 text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all text-center text-xl tracking-[0.3em] font-mono"
-              />
+              {disableUseRecovery ? (
+                <input
+                  type="text"
+                  maxLength={8}
+                  placeholder="XXXXXXXX"
+                  value={disableCode}
+                  onChange={(e) => setDisableCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))}
+                  className="w-full bg-surface-raised/50 border border-border rounded-lg py-3 px-4 text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all text-center text-xl tracking-[0.3em] font-mono"
+                />
+              ) : (
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  placeholder={t('twoFactor.codePlaceholder')}
+                  value={disableCode}
+                  onChange={(e) => setDisableCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="w-full bg-surface-raised/50 border border-border rounded-lg py-3 px-4 text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all text-center text-xl tracking-[0.3em] font-mono"
+                />
+              )}
+
               <button
                 onClick={() => { setError(''); disableMutation.mutate(disableCode); }}
-                disabled={disableCode.length !== 6 || disableMutation.isPending}
+                disabled={(disableUseRecovery ? disableCode.length !== 8 : disableCode.length !== 6) || disableMutation.isPending}
                 className="w-full py-3 font-bold text-white bg-red-500 hover:bg-red-600 rounded-lg transition-all disabled:opacity-50 disabled:pointer-events-none"
               >
                 {disableMutation.isPending ? t('twoFactor.settingUp') : t('twoFactor.disableButton')}
               </button>
             </div>
 
-            <button
-              onClick={() => navigate(-1)}
-              className="w-full py-2 text-content-muted text-sm hover:text-content-secondary transition-colors"
-            >
-              {t('twoFactor.cancel')}
-            </button>
+            <div className="flex justify-between">
+              <button
+                onClick={() => navigate(-1)}
+                className="text-content-muted text-xs hover:text-content-secondary transition-colors"
+              >
+                {t('twoFactor.cancel')}
+              </button>
+              <button
+                onClick={() => { setDisableUseRecovery(!disableUseRecovery); setDisableCode(''); setError(''); }}
+                className="text-content-muted text-xs hover:text-content-secondary transition-colors"
+              >
+                {disableUseRecovery ? t('twoFactor.useAuthenticatorCode') : t('twoFactor.lostDevice')}
+              </button>
+            </div>
           </div>
         )}
 

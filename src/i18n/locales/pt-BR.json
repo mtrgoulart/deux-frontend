@@ -852,6 +852,8 @@
     "recoveryCodePlaceholder": "Digite seu código de recuperação de 8 caracteres",
     "regenerateCodes": "Regenerar Códigos",
     "disableConfirm": "Digite seu código TOTP para confirmar",
+    "lostDevice": "Perdeu o dispositivo? Use código de recuperação",
+    "useAuthenticatorCode": "Usar código do autenticador",
     "warningTitle": "Proteja sua conta",
     "warningMessage": "Ative a autenticação de dois fatores (2FA) para adicionar uma camada extra de proteção à sua conta.",
     "warningLink": "Configurar 2FA agora"
