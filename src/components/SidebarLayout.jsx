@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../utils/api';
 import TopHeader from './TopHeader';
 
 // ─── Section Icons ───────────────────────────────────────────────────────────
@@ -234,6 +235,20 @@ function SidebarLayout() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [show2FAWarning, setShow2FAWarning] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch('/auth/2fa/status')
+      .then(res => res?.json())
+      .then(data => {
+        if (!cancelled && data && !data.enabled) {
+          setShow2FAWarning(true);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const accessibleNavSections = useMemo(() => {
     const userGroup = user?.group;
@@ -406,6 +421,40 @@ function SidebarLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* 2FA Setup Warning */}
+      {show2FAWarning && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm animate-slide-in-scale">
+          <div className="bg-yellow-500/10 border border-yellow-500/40 backdrop-blur-xl rounded-xl p-4 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center mt-0.5">
+                <svg className="w-4 h-4 text-yellow-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-yellow-300">{t('twoFactor.warningTitle')}</p>
+                <p className="text-xs text-yellow-300/70 mt-1">{t('twoFactor.warningMessage')}</p>
+                <Link
+                  to="/settings/security"
+                  onClick={() => setShow2FAWarning(false)}
+                  className="inline-block mt-2 text-xs font-semibold text-yellow-300 hover:text-yellow-200 underline underline-offset-2 transition-colors"
+                >
+                  {t('twoFactor.warningLink')}
+                </Link>
+              </div>
+              <button
+                onClick={() => setShow2FAWarning(false)}
+                className="flex-shrink-0 p-1 text-yellow-400/60 hover:text-yellow-300 transition-colors"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

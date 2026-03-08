@@ -851,6 +851,9 @@
     "useRecoveryCode": "Use a recovery code",
     "recoveryCodePlaceholder": "Enter your 8-character recovery code",
     "regenerateCodes": "Regenerate Codes",
-    "disableConfirm": "Enter your TOTP code to confirm"
+    "disableConfirm": "Enter your TOTP code to confirm",
+    "warningTitle": "Secure your account",
+    "warningMessage": "Enable two-factor authentication (2FA) to add an extra layer of protection to your account.",
+    "warningLink": "Set up 2FA now"
   }
 }
