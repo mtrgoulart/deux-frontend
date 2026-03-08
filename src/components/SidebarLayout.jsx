@@ -214,6 +214,7 @@ const navSectionsConfig = {
     links: [
       { path: '/user/apikeys', labelKey: 'nav.apiKeys', icon: IconKey },
       { path: '/user/wallet', labelKey: 'nav.wallet', icon: IconWallet },
+      { path: '/settings/security', labelKey: 'nav.twoFA', icon: IconShield },
     ]
   },
   development: {

@@ -38,7 +38,8 @@
     "sendSignal": "Enviar Sinal",
     "positions": "Posições",
     "collapse": "Recolher",
-    "signalTraces": "Rastreamento"
+    "signalTraces": "Rastreamento",
+    "twoFA": "2FA"
   },
   "header": {
     "logout": "Sair",

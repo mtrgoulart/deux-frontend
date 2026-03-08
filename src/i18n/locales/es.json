@@ -38,7 +38,8 @@
     "sendSignal": "Enviar Señal",
     "positions": "Posiciones",
     "collapse": "Contraer",
-    "signalTraces": "Rastreo"
+    "signalTraces": "Rastreo",
+    "twoFA": "2FA"
   },
   "header": {
     "logout": "Cerrar Sesión",

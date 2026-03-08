@@ -38,7 +38,8 @@
     "sendSignal": "Send Signal",
     "positions": "Positions",
     "collapse": "Collapse",
-    "signalTraces": "Signal Traces"
+    "signalTraces": "Signal Traces",
+    "twoFA": "2FA"
   },
   "header": {
     "logout": "Logout",
