@@ -14,6 +14,8 @@ function LoginPage() {
   const [password, setPassword] = useState('');
   const [totp, setTotp] = useState('');
   const [show2FA, setShow2FA] = useState(false);
+  const [useRecovery, setUseRecovery] = useState(false);
+  const [recoveryCode, setRecoveryCode] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -134,7 +136,8 @@ function LoginPage() {
   const handleLogin = (e) => {
     e.preventDefault();
     setError('');
-    loginMutation.mutate({ username, password, totp: show2FA ? totp : undefined });
+    const totpValue = show2FA ? (useRecovery ? recoveryCode : totp) : undefined;
+    loginMutation.mutate({ username, password, totp: totpValue });
   };
 
   const handleWalletLogin = () => {
@@ -192,27 +195,49 @@ function LoginPage() {
             ) : (
               <div>
                 <p className="text-content-secondary text-sm mb-3 text-center">
-                  {t('twoFactor.enterCode')}
+                  {useRecovery ? t('twoFactor.recoveryCodePlaceholder') : t('twoFactor.enterCode')}
                 </p>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]{6}"
-                  maxLength={6}
-                  placeholder={t('twoFactor.codePlaceholder')}
-                  value={totp}
-                  onChange={(e) => setTotp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  className="w-full bg-surface-raised/50 border border-border rounded-lg py-3 px-4 text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all text-center text-2xl tracking-[0.5em] font-mono"
-                  autoFocus
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => { setShow2FA(false); setTotp(''); setError(''); }}
-                  className="mt-2 text-content-muted text-xs hover:text-content-secondary transition-colors"
-                >
-                  {t('twoFactor.backToLogin')}
-                </button>
+                {useRecovery ? (
+                  <input
+                    type="text"
+                    maxLength={8}
+                    placeholder="XXXXXXXX"
+                    value={recoveryCode}
+                    onChange={(e) => setRecoveryCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))}
+                    className="w-full bg-surface-raised/50 border border-border rounded-lg py-3 px-4 text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all text-center text-2xl tracking-[0.3em] font-mono"
+                    autoFocus
+                    required
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    placeholder={t('twoFactor.codePlaceholder')}
+                    value={totp}
+                    onChange={(e) => setTotp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    className="w-full bg-surface-raised/50 border border-border rounded-lg py-3 px-4 text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all text-center text-2xl tracking-[0.5em] font-mono"
+                    autoFocus
+                    required
+                  />
+                )}
+                <div className="flex justify-between mt-2">
+                  <button
+                    type="button"
+                    onClick={() => { setShow2FA(false); setTotp(''); setRecoveryCode(''); setUseRecovery(false); setError(''); }}
+                    className="text-content-muted text-xs hover:text-content-secondary transition-colors"
+                  >
+                    {t('twoFactor.backToLogin')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setUseRecovery(!useRecovery); setError(''); }}
+                    className="text-content-muted text-xs hover:text-content-secondary transition-colors"
+                  >
+                    {useRecovery ? t('twoFactor.enterCode') : t('twoFactor.useRecoveryCode')}
+                  </button>
+                </div>
               </div>
             )}
             <button

@@ -823,9 +823,7 @@
     "backToLogin": "Voltar ao login",
     "setupTitle": "Configurar Autenticação de Dois Fatores",
     "setupDescription": "Adicione uma camada extra de segurança à sua conta usando um aplicativo de autenticação.",
-    "setupInstructions": "Clique no botão abaixo para habilitar 2FA. No seu próximo login, você será solicitado a escanear um código QR com seu aplicativo de autenticação (Google Authenticator, Authy, etc.).",
-    "setupInitiated": "Configuração de 2FA Iniciada",
-    "setupNextLogin": "No seu próximo login, você será guiado pelo processo de configuração do aplicativo de autenticação.",
+    "setupInstructions": "Clique no botão abaixo para habilitar 2FA. Você irá escanear um código QR com seu aplicativo de autenticação (Google Authenticator, Authy, etc.) e verificar um código para completar a configuração.",
     "done": "Concluído",
     "enableButton": "Habilitar 2FA",
     "disableButton": "Desabilitar 2FA",
@@ -838,7 +836,20 @@
     "statusEnabled": "Habilitado - Sua conta está protegida",
     "statusDisabled": "Desabilitado - Não configurado",
     "confirmDisable": "Tem certeza de que deseja desabilitar a autenticação de dois fatores? Isso tornará sua conta menos segura.",
-    "enableSuccess": "2FA foi habilitado. Você será solicitado a configurá-lo no seu próximo login.",
-    "disableSuccess": "2FA foi desabilitado."
+    "enableSuccess": "2FA foi habilitado com sucesso. Sua conta agora está protegida.",
+    "disableSuccess": "2FA foi desabilitado.",
+    "scanQRCode": "Escaneie o código QR abaixo com seu aplicativo de autenticação",
+    "manualEntry": "Ou insira esta chave manualmente:",
+    "verifySetupCode": "Digite o código de 6 dígitos do seu app para verificar a configuração",
+    "recoveryCodes": "Códigos de Recuperação",
+    "recoveryCodesWarning": "Salve estes códigos em um local seguro. Cada código pode ser usado apenas uma vez para acessar sua conta caso você perca seu dispositivo de autenticação.",
+    "copyAll": "Copiar Todos",
+    "copied": "Copiado!",
+    "download": "Baixar",
+    "savedConfirmation": "Eu salvei meus códigos de recuperação",
+    "useRecoveryCode": "Usar código de recuperação",
+    "recoveryCodePlaceholder": "Digite seu código de recuperação de 8 caracteres",
+    "regenerateCodes": "Regenerar Códigos",
+    "disableConfirm": "Digite seu código TOTP para confirmar"
   }
 }
