@@ -312,7 +312,7 @@ function HomePage() {
             {t('home.title')}
           </h1>
           <p className="text-content-secondary text-sm mt-1">
-            {t('home.welcome', { name: user?.username || user?.name || '' })}
+            {t('home.welcome', { name: user?.displayName || user?.username || '' })}
           </p>
         </div>
 

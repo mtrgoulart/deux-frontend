@@ -647,6 +647,10 @@
     "loginButton": "Iniciar Sesión",
     "registerButton": "Crear Cuenta",
     "walletLogin": "Iniciar con Billetera",
+    "connectWallet": "Conectar Billetera",
+    "walletConnecting": "Conectando...",
+    "linkWallet": "Vincular su Billetera",
+    "linkWalletDescription": "Conecte su billetera para proteger su cuenta",
     "or": "O",
     "noAccount": "¿No tiene una cuenta?",
     "registerLink": "Regístrese",
@@ -654,6 +658,9 @@
     "loginLink": "Iniciar Sesión",
     "createAccount": "Cree su Cuenta",
     "joinPlatform": "Únase a la plataforma y comience a operar",
+    "passwordLoginToggle": "¿Tiene una cuenta? Inicie sesión con contraseña",
+    "backToWalletLogin": "Volver al inicio con billetera",
+    "walletRequired": "Se requiere una conexión de billetera para continuar usando la plataforma.",
     "authenticating": "Autenticando...",
     "creatingAccount": "Creando su cuenta...",
     "registrationSuccess": "¡Registro Exitoso!",
@@ -668,7 +675,9 @@
       "passwordMismatch": "Las contraseñas no coinciden.",
       "registrationFailed": "Fallo al registrar el usuario.",
       "serverError": "Error al conectar con el servidor.",
-    "passwordResetRequired": "Hemos actualizado nuestro sistema de seguridad. Por favor, establezca una nueva contraseña en su próximo inicio de sesión."
+    "passwordResetRequired": "Hemos actualizado nuestro sistema de seguridad. Por favor, establezca una nueva contraseña en su próximo inicio de sesión.",
+      "accountLocked": "Cuenta temporalmente bloqueada debido a demasiados intentos fallidos. Intente nuevamente más tarde.",
+      "tooManyRequests": "Demasiados intentos. Espere un momento e intente nuevamente."
     }
   },
   "apiKeys": {
@@ -857,5 +866,9 @@
     "warningTitle": "Proteja su cuenta",
     "warningMessage": "Active la autenticación de dos factores (2FA) para agregar una capa extra de protección a su cuenta.",
     "warningLink": "Configurar 2FA ahora"
+  },
+  "profile": {
+    "displayName": "Nombre para Mostrar",
+    "walletAddress": "Dirección de Billetera"
   }
 }

@@ -4,12 +4,17 @@ import { apiFetch } from '../utils/api';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { UserEditModal } from '../components/UserEditModal';
 
+function formatWalletAddress(addr) {
+  if (!addr) return '-';
+  return addr.slice(0, 6) + '...' + addr.slice(-4);
+}
+
 function UsersPage() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
 
-  const tableHeaders = ["ID", "Username", "Email", "Group", "Actions"];
+  const tableHeaders = ["ID", "Display Name", "Wallet", "Group", "Actions"];
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['users'],
@@ -19,7 +24,7 @@ function UsersPage() {
       return json.users || [];
     },
   });
-  
+
   const deleteUserMutation = useMutation({
     mutationFn: (userId) => apiFetch(`/admin/users/${userId}`, { method: 'DELETE' }),
     onSuccess: () => {
@@ -40,7 +45,7 @@ function UsersPage() {
       deleteUserMutation.mutate(userId);
     }
   };
-  
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingUser(null);
@@ -67,8 +72,8 @@ function UsersPage() {
                 users.map((user) => (
                   <tr key={user.id} className="border-t border-gray-800/50 hover:bg-gray-900/50 transition-colors">
                     <td className="px-6 py-4 font-mono text-xs">{user.id}</td>
-                    <td className="px-6 py-4">{user.username}</td>
-                    <td className="px-6 py-4 text-gray-400">{user.email || '-'}</td>
+                    <td className="px-6 py-4">{user.display_name || user.username || '-'}</td>
+                    <td className="px-6 py-4 font-mono text-xs text-gray-400">{formatWalletAddress(user.wallet_address)}</td>
                     <td className="px-6 py-4">
                       <span className={`inline-block px-3 py-1 text-xs font-bold rounded-full
                         ${user.group === 'Admin' ? 'bg-red-500/30 text-red-300' : 'bg-sky-500/20 text-sky-300'}`
@@ -79,11 +84,9 @@ function UsersPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-4">
                         <button onClick={() => handleEdit(user)} className="text-gray-400 hover:text-white transition-colors">
-                          {/* Ícone de Edição alterado */}
                           <img src="/icons/config.svg" alt="Edit" className="w-5 h-5" />
                         </button>
                         <button onClick={() => handleDelete(user.id)} className="text-gray-400 hover:text-red-500 transition-colors">
-                          {/* Ícone de Lixeira alterado */}
                           <img src="/icons/trash.svg" alt="Delete" className="w-5 h-5" />
                         </button>
                       </div>
@@ -101,9 +104,9 @@ function UsersPage() {
           </table>
         </div>
       )}
-      
+
       {isModalOpen && (
-        <UserEditModal 
+        <UserEditModal
             user={editingUser}
             onClose={handleCloseModal}
         />

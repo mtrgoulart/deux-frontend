@@ -647,6 +647,10 @@
     "loginButton": "Sign In",
     "registerButton": "Create Account",
     "walletLogin": "Sign In with Wallet",
+    "connectWallet": "Connect Wallet",
+    "walletConnecting": "Connecting...",
+    "linkWallet": "Link Your Wallet",
+    "linkWalletDescription": "Connect your wallet to secure your account",
     "or": "OR",
     "noAccount": "Don't have an account?",
     "registerLink": "Sign Up",
@@ -654,6 +658,9 @@
     "loginLink": "Sign In",
     "createAccount": "Create Your Account",
     "joinPlatform": "Join the platform and start trading",
+    "passwordLoginToggle": "Have an account? Sign in with password",
+    "backToWalletLogin": "Back to wallet login",
+    "walletRequired": "A wallet connection is required to continue using the platform.",
     "authenticating": "Authenticating...",
     "creatingAccount": "Creating your account...",
     "registrationSuccess": "Registration Successful!",
@@ -668,7 +675,9 @@
       "passwordMismatch": "Passwords do not match.",
       "registrationFailed": "Failed to register user.",
       "serverError": "Error connecting to the server.",
-    "passwordResetRequired": "We've upgraded our security system. Please set a new password on your next login."
+    "passwordResetRequired": "We've upgraded our security system. Please set a new password on your next login.",
+      "accountLocked": "Account temporarily locked due to too many failed attempts. Please try again later.",
+      "tooManyRequests": "Too many attempts. Please wait a moment and try again."
     }
   },
   "apiKeys": {
@@ -857,5 +866,9 @@
     "warningTitle": "Secure your account",
     "warningMessage": "Enable two-factor authentication (2FA) to add an extra layer of protection to your account.",
     "warningLink": "Set up 2FA now"
+  },
+  "profile": {
+    "displayName": "Display Name",
+    "walletAddress": "Wallet Address"
   }
 }

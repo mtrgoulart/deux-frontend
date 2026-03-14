@@ -76,7 +76,7 @@ function TopHeader({ isCollapsed, onToggleCollapse }) {
   };
 
   const currentLang = languages.find((l) => l.code === i18n.language) || languages[0];
-  const userInitial = user?.username?.charAt(0)?.toUpperCase() || '?';
+  const userInitial = user?.displayName?.charAt(0)?.toUpperCase() || '?';
 
   return (
     <header className="h-14 bg-surface border-b border-border flex items-center justify-between px-6 shrink-0">
@@ -149,7 +149,7 @@ function TopHeader({ isCollapsed, onToggleCollapse }) {
             <div className="w-7 h-7 rounded-full bg-accent-muted border border-border-accent flex items-center justify-center text-xs font-bold text-content-accent">
               {userInitial}
             </div>
-            <span className="hidden sm:inline">{user?.username || 'User'}</span>
+            <span className="hidden sm:inline">{user?.displayName || 'User'}</span>
             <ChevronDownIcon className="w-4 h-4" />
           </button>
           {userOpen && (

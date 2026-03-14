@@ -3,30 +3,56 @@ import { jwtDecode } from 'jwt-decode';
 
 const AuthContext = createContext(null);
 
+function formatWalletAddress(addr) {
+  return addr ? addr.slice(0, 6) + '...' + addr.slice(-4) : null;
+}
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem('authToken'));
   const [refreshToken, setRefreshToken] = useState(() => localStorage.getItem('refreshToken'));
   const [requires2FA, setRequires2FA] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   useEffect(() => {
     try {
       if (token) {
         const decodedUser = jwtDecode(token);
         if (decodedUser.exp * 1000 > Date.now()) {
-          // Map Keycloak JWT fields to app user format
-          setUser({
+          // Set user from JWT claims, preserving walletAddress from previous state
+          // to avoid race condition during token refresh
+          setUser(prev => ({
             user_id: decodedUser.neo_user_id || decodedUser.user_id,
             group: extractGroup(decodedUser),
+            displayName: decodedUser.display_name || decodedUser.preferred_username || formatWalletAddress(decodedUser.wallet_address),
+            walletAddress: decodedUser.wallet_address || prev?.walletAddress,
             username: decodedUser.preferred_username || decodedUser.username,
             exp: decodedUser.exp,
             iat: decodedUser.iat
-          });
+          }));
+          // Hydrate user from server (DB-backed, has wallet_address even if JWT doesn't)
+          fetch('/api/auth/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+            .then(res => res.ok ? res.json() : null)
+            .then(serverUser => {
+              if (serverUser) {
+                setUser(prev => prev ? {
+                  ...prev,
+                  walletAddress: serverUser.wallet_address || prev.walletAddress,
+                  displayName: serverUser.display_name || prev.displayName,
+                  group: serverUser.group || prev.group,
+                } : prev);
+              }
+              setProfileLoaded(true);
+            })
+            .catch(() => { setProfileLoaded(true); });
         } else {
           clearAuth();
         }
       } else {
         setUser(null);
+        setProfileLoaded(false);
       }
     } catch (error) {
       console.error("Failed to decode JWT:", error);
@@ -110,7 +136,11 @@ export const AuthProvider = ({ children }) => {
     setRequires2FA(false);
   };
 
-  const value = { user, token, refreshToken, requires2FA, login, logout, setRequires2FA };
+  const updateUser = useCallback((updates) => {
+    setUser(prev => prev ? { ...prev, ...updates } : prev);
+  }, []);
+
+  const value = { user, token, refreshToken, requires2FA, profileLoaded, login, logout, setRequires2FA, updateUser };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

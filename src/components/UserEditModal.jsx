@@ -2,23 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../utils/api';
 
+function formatWalletAddress(addr) {
+  if (!addr) return 'Not linked';
+  return addr.slice(0, 6) + '...' + addr.slice(-4);
+}
+
 export function UserEditModal({ user, onClose }) {
   const queryClient = useQueryClient();
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
-    username: '',
-    email: '', // Campo de e-mail adicionado
+    display_name: '',
+    email: '',
     group_id: '',
-    password: '',
   });
 
   useEffect(() => {
     if (user) {
       setFormData({
-        username: user.username || '',
-        email: user.email || '', // Campo de e-mail adicionado
+        display_name: user.display_name || user.username || '',
+        email: user.email || '',
         group_id: user.group === 'Admin' ? 1 : (user.group === 'Guest' ? 3 : 2),
-        password: '',
       });
     }
   }, [user]);
@@ -46,16 +49,12 @@ export function UserEditModal({ user, onClose }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     const payload = {
-        username: formData.username,
-        email: formData.email, // Campo de e-mail adicionado ao payload
+        display_name: formData.display_name,
+        email: formData.email,
         group_id: parseInt(formData.group_id, 10),
     };
-
-    if (formData.password) {
-        payload.password = formData.password;
-    }
 
     updateUserMutation.mutate(payload);
   };
@@ -71,23 +70,29 @@ export function UserEditModal({ user, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in-fast">
       <div className="bg-gray-900 border border-red-500/30 rounded-lg shadow-xl p-8 w-full max-w-md text-white">
-        <h2 className="text-2xl font-bold mb-6">Edit User: <span className="text-red-400">{user.username}</span></h2>
-        
+        <h2 className="text-2xl font-bold mb-6">Edit User: <span className="text-red-400">{user.display_name || user.username}</span></h2>
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-400 mb-2">Username</label>
+            <label htmlFor="display_name" className="block text-sm font-medium text-gray-400 mb-2">Display Name</label>
             <input
               type="text"
-              id="username"
-              name="username"
-              value={formData.username}
+              id="display_name"
+              name="display_name"
+              value={formData.display_name}
               onChange={handleChange}
               className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-red-500 transition"
               required
             />
           </div>
 
-          {/* Campo de E-mail Adicionado */}
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-2">Wallet Address</label>
+            <div className="w-full bg-gray-800/50 border border-gray-700 rounded-md p-2 text-gray-400 font-mono text-sm">
+              {formatWalletAddress(user.wallet_address)}
+            </div>
+          </div>
+
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-400 mb-2">Email</label>
             <input
@@ -99,7 +104,7 @@ export function UserEditModal({ user, onClose }) {
               className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-red-500 transition"
             />
           </div>
-          
+
           <div>
             <label htmlFor="group_id" className="block text-sm font-medium text-gray-400 mb-2">Group</label>
             <select
@@ -114,19 +119,6 @@ export function UserEditModal({ user, onClose }) {
                 <option key={group.id} value={group.id}>{group.name}</option>
               ))}
             </select>
-          </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-400 mb-2">New Password <span className="text-xs">(optional)</span></label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Leave blank to keep current password"
-              className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-red-500 transition"
-            />
           </div>
 
           <div className="flex justify-end gap-4 pt-4">

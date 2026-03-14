@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import Verify2FAPage from './pages/Verify2FAPage';
 import Setup2FAPage from './pages/Setup2FAPage';
+import LinkWalletPage from './pages/LinkWalletPage';
 import SidebarLayout from './components/SidebarLayout';
 import HomePage from './pages/HomePage';
 import StrategyPage from './pages/StrategyPage';
@@ -37,6 +38,7 @@ function App() {
 
         {/* Rotas Protegidas */}
         <Route element={<ProtectedRoute />}>
+          <Route path="/link-wallet" element={<LinkWalletPage />} />
           <Route path="/" element={<SidebarLayout />}>
             {/* Rota Raiz agora aponta para a HomePage */}
             <Route index element={<HomePage />} />

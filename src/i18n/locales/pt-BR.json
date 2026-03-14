@@ -647,6 +647,10 @@
     "loginButton": "Entrar",
     "registerButton": "Criar Conta",
     "walletLogin": "Entrar com Carteira",
+    "connectWallet": "Conectar Carteira",
+    "walletConnecting": "Conectando...",
+    "linkWallet": "Vincular sua Carteira",
+    "linkWalletDescription": "Conecte sua carteira para proteger sua conta",
     "or": "OU",
     "noAccount": "Não tem uma conta?",
     "registerLink": "Cadastre-se",
@@ -654,6 +658,9 @@
     "loginLink": "Entrar",
     "createAccount": "Crie sua Conta",
     "joinPlatform": "Junte-se à plataforma e comece a operar",
+    "passwordLoginToggle": "Tem uma conta? Entre com senha",
+    "backToWalletLogin": "Voltar ao login com carteira",
+    "walletRequired": "A conexão de uma carteira é necessária para continuar usando a plataforma.",
     "authenticating": "Autenticando...",
     "creatingAccount": "Criando sua conta...",
     "registrationSuccess": "Registro Realizado com Sucesso!",
@@ -668,7 +675,9 @@
       "passwordMismatch": "As senhas não coincidem.",
       "registrationFailed": "Falha ao registrar usuário.",
       "serverError": "Erro ao conectar ao servidor.",
-    "passwordResetRequired": "Atualizamos nosso sistema de segurança. Por favor, defina uma nova senha no seu próximo login."
+    "passwordResetRequired": "Atualizamos nosso sistema de segurança. Por favor, defina uma nova senha no seu próximo login.",
+      "accountLocked": "Conta temporariamente bloqueada devido a muitas tentativas falhas. Tente novamente mais tarde.",
+      "tooManyRequests": "Muitas tentativas. Aguarde um momento e tente novamente."
     }
   },
   "apiKeys": {
@@ -857,5 +866,9 @@
     "warningTitle": "Proteja sua conta",
     "warningMessage": "Ative a autenticação de dois fatores (2FA) para adicionar uma camada extra de proteção à sua conta.",
     "warningLink": "Configurar 2FA agora"
+  },
+  "profile": {
+    "displayName": "Nome de Exibição",
+    "walletAddress": "Endereço da Carteira"
   }
 }
