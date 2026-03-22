@@ -26,6 +26,9 @@ import CopySubscriptionPage from './pages/CopySubscriptionPage';
 import MarketChartPage from './pages/MarketChartPage';
 import WalletPage from './pages/WalletPage';
 import SignalTracesPage from './pages/SignalTracesPage';
+import AdminConfigPage from './pages/AdminConfigPage';
+import AdminCommissionsPage from './pages/AdminCommissionsPage';
+import CommissionsPage from './pages/CommissionsPage';
 
 function App() {
   return (
@@ -48,6 +51,7 @@ function App() {
             <Route path="signals" element={<SignalTracesPage mode="user" />} />
             <Route path="operations" element={<OperationsPage />} />
             <Route path="positions" element={<PositionsPage />} />
+            <Route path="commissions" element={<CommissionsPage />} />
 
             <Route path="copy/explore" element={<ExplorePage />} />
             <Route path="copy/details/:id" element={<CopyDetailPage />} />
@@ -71,6 +75,8 @@ function App() {
             <Route element={<ProtectedRoute allowedGroups={['Admin']} />}>
               <Route path="users" element={<UsersPage />} />
               <Route path="admin/traces" element={<SignalTracesPage />} />
+              <Route path="admin/config" element={<AdminConfigPage />} />
+              <Route path="admin/commissions" element={<AdminCommissionsPage />} />
             </Route>
 
           </Route>

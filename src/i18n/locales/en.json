@@ -14,7 +14,13 @@
     "toDate": "To Date",
     "active": "Active",
     "filterByDateRange": "Filter by Date Range",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "loading": "Loading...",
+    "copy": "Copy",
+    "copied": "Copied!"
   },
   "nav": {
     "administration": "Administration",
@@ -39,6 +45,9 @@
     "positions": "Positions",
     "collapse": "Collapse",
     "signalTraces": "Signal Traces",
+    "platformConfig": "Platform Config",
+    "commissions": "Commissions",
+    "myCommissions": "My Commissions",
     "twoFA": "2FA"
   },
   "header": {
@@ -870,5 +879,75 @@
   "profile": {
     "displayName": "Display Name",
     "walletAddress": "Wallet Address"
+  },
+  "wallet": {
+    "title": "Platform Wallet",
+    "loading": "Loading wallet...",
+    "error": "Error loading wallet",
+    "addressLabel": "Wallet Address (Polygon)",
+    "deposit": "Deposit",
+    "token": "Token",
+    "balance": "Balance",
+    "noTokens": "No tokens found. Deposit tokens to get started.",
+    "tabs": {
+      "balances": "Balances",
+      "commissions": "Commissions"
+    },
+    "moa": {
+      "label": "Minimum Operational Amount",
+      "warning": "Your balance is below the minimum operational amount. Deposit funds to start or resume operations."
+    },
+    "withdraw": {
+      "button": "Withdraw",
+      "title": "Withdraw Tokens",
+      "amount": "Amount",
+      "destination": "Destination Address",
+      "confirm": "Withdraw",
+      "processing": "Processing withdrawal...",
+      "invalidAmount": "Please enter a valid amount.",
+      "invalidAddress": "Please enter a valid Ethereum address (0x...)."
+    },
+    "commission": {
+      "date": "Date",
+      "profit": "Profit",
+      "rate": "Rate",
+      "amount": "Commission",
+      "statusLabel": "Status",
+      "noCommissions": "No commissions yet.",
+      "status": {
+        "transferred": "Transferred",
+        "pending": "Pending",
+        "failed": "Failed",
+        "insufficient_balance": "Insufficient Balance"
+      }
+    }
+  },
+  "adminConfig": {
+    "title": "Platform Configuration",
+    "loading": "Loading configuration...",
+    "saving": "Saving...",
+    "key": "Setting",
+    "value": "Value",
+    "actions": "Actions",
+    "commissionRate": "Commission Rate",
+    "moaAmount": "Minimum Operational Amount",
+    "moaToken": "MOA Token",
+    "commissionToken": "Commission Token",
+    "commissionTokenAddress": "Commission Token Address",
+    "masterWalletAddress": "Master Wallet Address"
+  },
+  "commissions": {
+    "title": "My Commissions"
+  },
+  "adminCommissions": {
+    "title": "All Commissions",
+    "loading": "Loading commissions...",
+    "user": "User",
+    "noCommissions": "No commissions recorded yet."
+  },
+  "copySubscription": {
+    "pause": "Pause",
+    "resume": "Resume",
+    "paused": "Paused"
   }
 }

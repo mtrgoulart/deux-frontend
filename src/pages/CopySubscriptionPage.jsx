@@ -65,6 +65,24 @@ function CopySubscriptionPage() {
     },
   });
 
+  const pauseResumeMutation = useMutation({
+    mutationFn: async ({ subscriptionId, action }) => {
+      const res = await apiFetch(`/copytrading/subscription/${subscriptionId}/${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['copytrading_subscriptions']);
+    },
+    onError: (error) => {
+      alert(error.message);
+    },
+  });
+
   const paginatedSubscriptions = useMemo(() => {
     const startIndex = (currentPage - 1) * recordsPerPage;
     return subscriptions.slice(startIndex, startIndex + recordsPerPage);
@@ -194,11 +212,13 @@ function CopySubscriptionPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-bold uppercase tracking-wider ${
-                              sub.is_active
-                                ? 'bg-success-muted text-success'
-                                : 'bg-surface-raised text-content-muted border border-border-subtle'
+                              sub.is_paused
+                                ? 'bg-warning/20 text-warning'
+                                : sub.is_active
+                                  ? 'bg-success-muted text-success'
+                                  : 'bg-surface-raised text-content-muted border border-border-subtle'
                             }`}>
-                              {sub.is_active ? t('copySubscription.active') : t('copySubscription.inactive')}
+                              {sub.is_paused ? t('copySubscription.paused') : sub.is_active ? t('copySubscription.active') : t('copySubscription.inactive')}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-content-secondary font-mono">
@@ -226,6 +246,23 @@ function CopySubscriptionPage() {
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
                               </button>
+                              {sub.is_active && (
+                                <button
+                                  onClick={() => pauseResumeMutation.mutate({
+                                    subscriptionId: sub.id,
+                                    action: sub.is_paused ? 'resume' : 'pause',
+                                  })}
+                                  disabled={pauseResumeMutation.isPending}
+                                  className={`px-2.5 py-1 text-xs font-medium rounded border transition-colors ${
+                                    sub.is_paused
+                                      ? 'bg-success/20 text-success border-success/30 hover:bg-success/30'
+                                      : 'bg-warning/20 text-warning border-warning/30 hover:bg-warning/30'
+                                  }`}
+                                  title={sub.is_paused ? t('copySubscription.resume') : t('copySubscription.pause')}
+                                >
+                                  {sub.is_paused ? t('copySubscription.resume') : t('copySubscription.pause')}
+                                </button>
+                              )}
                               <button
                                 onClick={() => setSubscriptionToExit(sub)}
                                 className="p-2 hover:bg-surface-raised/50 rounded transition-all duration-200 group/btn"

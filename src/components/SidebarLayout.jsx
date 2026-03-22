@@ -178,6 +178,8 @@ const navSectionsConfig = {
     links: [
       { path: '/users', labelKey: 'nav.users', icon: IconUsers },
       { path: '/admin/traces', labelKey: 'nav.signalTraces', icon: IconZap },
+      { path: '/admin/config', labelKey: 'nav.platformConfig', icon: IconSliders },
+      { path: '/admin/commissions', labelKey: 'nav.commissions', icon: IconChart },
     ]
   },
   automation: {
@@ -207,6 +209,7 @@ const navSectionsConfig = {
       { path: '/operations', labelKey: 'nav.operations', icon: IconArrowsUpDown },
       { path: '/positions', labelKey: 'nav.positions', icon: IconBriefcase },
       { path: '/market/data', labelKey: 'nav.marketData', icon: IconCandlestick },
+      { path: '/commissions', labelKey: 'nav.myCommissions', icon: IconWallet },
     ],
   },
   user: {

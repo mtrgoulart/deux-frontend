@@ -39,6 +39,9 @@
     "positions": "Posiciones",
     "collapse": "Contraer",
     "signalTraces": "Rastreo",
+    "platformConfig": "Configuración",
+    "commissions": "Comisiones",
+    "myCommissions": "Mis Comisiones",
     "twoFA": "2FA"
   },
   "header": {
@@ -870,5 +873,72 @@
   "profile": {
     "displayName": "Nombre para Mostrar",
     "walletAddress": "Dirección de Billetera"
+  },
+  "wallet": {
+    "title": "Billetera de la Plataforma",
+    "loading": "Cargando billetera...",
+    "error": "Error al cargar billetera",
+    "addressLabel": "Dirección de Billetera (Polygon)",
+    "deposit": "Depositar",
+    "token": "Token",
+    "balance": "Saldo",
+    "noTokens": "No se encontraron tokens. Deposite tokens para comenzar.",
+    "tabs": { "balances": "Saldos", "commissions": "Comisiones" },
+    "moa": {
+      "label": "Monto Mínimo Operacional",
+      "warning": "Su saldo está por debajo del monto mínimo operacional. Deposite fondos para iniciar o reanudar operaciones."
+    },
+    "withdraw": {
+      "button": "Retirar",
+      "title": "Retirar Tokens",
+      "amount": "Monto",
+      "destination": "Dirección de Destino",
+      "confirm": "Retirar",
+      "processing": "Procesando retiro...",
+      "invalidAmount": "Ingrese un monto válido.",
+      "invalidAddress": "Ingrese una dirección Ethereum válida (0x...)."
+    },
+    "commission": {
+      "date": "Fecha",
+      "profit": "Ganancia",
+      "rate": "Tasa",
+      "amount": "Comisión",
+      "statusLabel": "Estado",
+      "noCommissions": "Sin comisiones aún.",
+      "status": {
+        "transferred": "Transferido",
+        "pending": "Pendiente",
+        "failed": "Fallido",
+        "insufficient_balance": "Saldo Insuficiente"
+      }
+    }
+  },
+  "adminConfig": {
+    "title": "Configuración de la Plataforma",
+    "loading": "Cargando configuración...",
+    "saving": "Guardando...",
+    "key": "Configuración",
+    "value": "Valor",
+    "actions": "Acciones",
+    "commissionRate": "Tasa de Comisión",
+    "moaAmount": "Monto Mínimo Operacional",
+    "moaToken": "Token MOA",
+    "commissionToken": "Token de Comisión",
+    "commissionTokenAddress": "Dirección del Token de Comisión",
+    "masterWalletAddress": "Dirección de Billetera Maestra"
+  },
+  "commissions": {
+    "title": "Mis Comisiones"
+  },
+  "adminCommissions": {
+    "title": "Todas las Comisiones",
+    "loading": "Cargando comisiones...",
+    "user": "Usuario",
+    "noCommissions": "No se han registrado comisiones aún."
+  },
+  "copySubscription": {
+    "pause": "Pausar",
+    "resume": "Reanudar",
+    "paused": "Pausado"
   }
 }

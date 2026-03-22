@@ -39,6 +39,9 @@
     "positions": "Posições",
     "collapse": "Recolher",
     "signalTraces": "Rastreamento",
+    "platformConfig": "Configurações",
+    "commissions": "Comissões",
+    "myCommissions": "Minhas Comissões",
     "twoFA": "2FA"
   },
   "header": {
@@ -870,5 +873,72 @@
   "profile": {
     "displayName": "Nome de Exibição",
     "walletAddress": "Endereço da Carteira"
+  },
+  "wallet": {
+    "title": "Carteira da Plataforma",
+    "loading": "Carregando carteira...",
+    "error": "Erro ao carregar carteira",
+    "addressLabel": "Endereço da Carteira (Polygon)",
+    "deposit": "Depositar",
+    "token": "Token",
+    "balance": "Saldo",
+    "noTokens": "Nenhum token encontrado. Deposite tokens para começar.",
+    "tabs": { "balances": "Saldos", "commissions": "Comissões" },
+    "moa": {
+      "label": "Valor Mínimo Operacional",
+      "warning": "Seu saldo está abaixo do valor mínimo operacional. Deposite fundos para iniciar ou retomar operações."
+    },
+    "withdraw": {
+      "button": "Sacar",
+      "title": "Sacar Tokens",
+      "amount": "Valor",
+      "destination": "Endereço de Destino",
+      "confirm": "Sacar",
+      "processing": "Processando saque...",
+      "invalidAmount": "Insira um valor válido.",
+      "invalidAddress": "Insira um endereço Ethereum válido (0x...)."
+    },
+    "commission": {
+      "date": "Data",
+      "profit": "Lucro",
+      "rate": "Taxa",
+      "amount": "Comissão",
+      "statusLabel": "Status",
+      "noCommissions": "Nenhuma comissão ainda.",
+      "status": {
+        "transferred": "Transferido",
+        "pending": "Pendente",
+        "failed": "Falhou",
+        "insufficient_balance": "Saldo Insuficiente"
+      }
+    }
+  },
+  "adminConfig": {
+    "title": "Configuração da Plataforma",
+    "loading": "Carregando configuração...",
+    "saving": "Salvando...",
+    "key": "Configuração",
+    "value": "Valor",
+    "actions": "Ações",
+    "commissionRate": "Taxa de Comissão",
+    "moaAmount": "Valor Mínimo Operacional",
+    "moaToken": "Token MOA",
+    "commissionToken": "Token de Comissão",
+    "commissionTokenAddress": "Endereço do Token de Comissão",
+    "masterWalletAddress": "Endereço da Carteira Master"
+  },
+  "commissions": {
+    "title": "Minhas Comissões"
+  },
+  "adminCommissions": {
+    "title": "Todas as Comissões",
+    "loading": "Carregando comissões...",
+    "user": "Usuário",
+    "noCommissions": "Nenhuma comissão registrada ainda."
+  },
+  "copySubscription": {
+    "pause": "Pausar",
+    "resume": "Retomar",
+    "paused": "Pausado"
   }
 }
