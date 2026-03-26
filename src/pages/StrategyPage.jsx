@@ -306,6 +306,7 @@ function StrategyPage() {
       symbol: instance.symbol,
       strategy_buy: instance.strategy_buy || '',
       strategy_sell: instance.strategy_sell || '',
+      participate_psl: instance.participate_psl !== undefined ? instance.participate_psl : true,
     });
     setShowAddForm(true);
   };
@@ -317,7 +318,8 @@ function StrategyPage() {
       symbol: '',
       strategy_buy: '',
       strategy_sell: '',
-      status: 1
+      status: 1,
+      participate_psl: true
     });
     setShowAddForm(true);
   };

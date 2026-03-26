@@ -335,6 +335,30 @@ function InstanceCreationForm({ show, onClose, apiKeys, initialData, selectedApi
               </p>
             </div>
 
+            {/* PSL Configuration */}
+            <div className="border border-border-subtle p-4 rounded-md space-y-2">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="participate-psl"
+                  checked={formState.participate_psl !== undefined ? formState.participate_psl : true}
+                  onChange={(e) => setFormState(prev => ({ ...prev, participate_psl: e.target.checked }))}
+                  className="w-4 h-4 rounded border-border bg-surface-primary text-accent focus:ring-accent"
+                />
+                <label htmlFor="participate-psl" className="text-sm font-medium text-content-primary">
+                  {t('instance.formParticipatePsl')}
+                </label>
+              </div>
+              <p className="text-xs text-content-muted ml-7">
+                {t('instance.formParticipatePslDescription')}
+              </p>
+              {!(formState.participate_psl !== undefined ? formState.participate_psl : true) && (
+                <p className="text-sm text-danger ml-7">
+                  {t('instance.formParticipatePslWarning')}
+                </p>
+              )}
+            </div>
+
             <StrategySelector side="buy" isLoading={isStrategyLoading.buy} selectedStrategy={selectedStrategies.buy} recentSuggestions={recentSuggestions.buy} onSelect={(strategy) => fetchStrategyDetails({ ...strategy, side: 'buy' })} onClear={handleClearStrategy} onSearch={() => setIsSearchModalOpen(prev => ({ ...prev, buy: true }))} />
             <StrategySelector side="sell" isLoading={isStrategyLoading.sell} selectedStrategy={selectedStrategies.sell} recentSuggestions={recentSuggestions.sell} onSelect={(strategy) => fetchStrategyDetails({ ...strategy, side: 'sell' })} onClear={handleClearStrategy} onSearch={() => setIsSearchModalOpen(prev => ({ ...prev, sell: true }))} />
 
