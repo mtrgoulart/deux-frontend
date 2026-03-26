@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../utils/api';
 import { useDateRangeFilter } from '../hooks/useDateRangeFilter';
@@ -7,6 +7,7 @@ import Pagination from '../components/Pagination';
 import DateRangeFilter from '../components/DateRangeFilter';
 import TradingBarsLoader from '../components/TradingBarsLoader';
 import RefreshButton from '../components/RefreshButton';
+import ClosePositionModal from '../components/ClosePositionModal';
 
 function PositionsPage() {
     const { t } = useTranslation();
@@ -20,6 +21,9 @@ function PositionsPage() {
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const recordsPerPage = 25;
+
+    // Close position state
+    const [closePosition, setClosePosition] = useState(null);
 
     // Fetch instances (strategies)
     const { data: instances = [] } = useQuery({
@@ -47,6 +51,49 @@ function PositionsPage() {
         staleTime: 2 * 60 * 1000,
         cacheTime: 10 * 60 * 1000,
         refetchOnWindowFocus: false,
+    });
+
+    // System close mutation
+    const closeMutation = useMutation({
+        mutationFn: async (instanceId) => {
+            const res = await apiFetch('/close_position', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ instance_id: instanceId }),
+            });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || 'Failed to close position');
+            }
+            return res.json();
+        },
+        onSuccess: () => {
+            setClosePosition(null);
+            refetchPositions();
+        },
+        onError: () => {
+            setClosePosition(null);
+        },
+    });
+
+    // Manual close mutation
+    const manualCloseMutation = useMutation({
+        mutationFn: async (data) => {
+            const res = await apiFetch('/manual_close_position', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || 'Failed to manually close position');
+            }
+            return res.json();
+        },
+        onSuccess: () => {
+            setClosePosition(null);
+            refetchPositions();
+        },
     });
 
     // Extract unique symbols from positions
@@ -282,12 +329,13 @@ function PositionsPage() {
                                         <th className="px-6 py-4 text-center text-xs font-semibold text-content-muted uppercase tracking-wider">{t('positions.status')}</th>
                                         <th className="px-6 py-4 text-left text-xs font-semibold text-content-muted uppercase tracking-wider">{t('positions.entryDate')}</th>
                                         <th className="px-6 py-4 text-left text-xs font-semibold text-content-muted uppercase tracking-wider">{t('positions.closeDate')}</th>
+                                        <th className="px-6 py-4 text-center text-xs font-semibold text-content-muted uppercase tracking-wider">{t('positions.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className={`divide-y divide-border-subtle transition-opacity duration-300 ${positionsFetching && !isLoading ? 'opacity-40' : ''}`}>
                                     {paginatedPositions.length === 0 ? (
                                         <tr>
-                                            <td colSpan="9" className="px-6 py-12 text-center">
+                                            <td colSpan="10" className="px-6 py-12 text-center">
                                                 <div className="text-content-muted text-sm">
                                                     {positions.length === 0
                                                         ? t('positions.noPositions')
@@ -342,6 +390,17 @@ function PositionsPage() {
                                                         ? `${new Date(pos.closed_at).toLocaleDateString()} ${new Date(pos.closed_at).toLocaleTimeString()}`
                                                         : '--'}
                                                 </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                    {pos.status === 'open' ? (
+                                                        <button
+                                                            onClick={() => setClosePosition(pos)}
+                                                            className="px-3 py-1.5 bg-danger/10 border border-danger/30 text-danger rounded text-xs font-semibold
+                                                                     hover:bg-danger/20 transition-colors"
+                                                        >
+                                                            {t('positions.closePosition')}
+                                                        </button>
+                                                    ) : null}
+                                                </td>
                                             </tr>
                                         ))
                                     )}
@@ -363,6 +422,16 @@ function PositionsPage() {
                     </div>
                 </div>
             </div>
+
+            <ClosePositionModal
+                isOpen={!!closePosition}
+                onClose={() => setClosePosition(null)}
+                onSystemClose={(instanceId) => closeMutation.mutate(instanceId)}
+                onManualClose={(data) => manualCloseMutation.mutate(data)}
+                position={closePosition}
+                allOpenPositions={closePosition ? positions.filter(p => p.instance_id === closePosition.instance_id && p.status === 'open') : []}
+                isSubmitting={closeMutation.isPending || manualCloseMutation.isPending}
+            />
         </div>
     );
 }
