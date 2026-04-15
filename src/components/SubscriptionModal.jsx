@@ -43,10 +43,16 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
                 // Mark subscribed ones with their config
                 if (primarySub.subscribed_sharings) {
                     primarySub.subscribed_sharings.forEach(s => {
+                        const mode = s.size_mode || 'percentage';
+                        const rawAmount = s.size_amount || 100;
+                        // DB stores percentage as decimal (0.80 = 80%), convert back for display
+                        const displayValue = mode === 'percentage' && rawAmount <= 1
+                            ? rawAmount * 100
+                            : rawAmount;
                         configs[s.sharing_id] = {
                             selected: true,
-                            size_mode: s.size_mode || 'percentage',
-                            size_value: String(s.size_amount || 100)
+                            size_mode: mode,
+                            size_value: String(displayValue)
                         };
                     });
                 }
