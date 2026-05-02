@@ -32,6 +32,7 @@
     "copy": "Copy",
     "create": "Create",
     "explore": "Explore",
+    "copyDashboard": "Dashboard",
     "subscriptions": "Subscriptions",
     "visualization": "Visualization",
     "signals": "Signals",
@@ -571,7 +572,41 @@
     "strategyReturn": "Strategy Return",
     "cyclesCoverage": "based on {{scoreable}} of {{total}} cycles",
     "noCyclesYet": "no closed cycles yet",
-    "compoundedNote": "compounded across closed signal cycles"
+    "compoundedNote": "compounded across closed signal cycles",
+    "selectAll": "Select all",
+    "selectedOfTotal": "{{selected}} of {{total}}",
+    "applyToAll": "Apply to all",
+    "applyToAllTooltip": "Apply this sizing to every selected strategy",
+    "cycleReturn": "Return %"
+  },
+  "copyDashboard": {
+    "title": "Copy Trading Dashboard",
+    "timeRange": {
+      "7d": "7d",
+      "30d": "30d",
+      "all": "All"
+    },
+    "kpis": {
+      "realizedPnl": "Realized PnL",
+      "openPositions": "Open Positions",
+      "activeSubscriptions": "Active Subscriptions"
+    },
+    "mySubscriptions": "My Subscriptions",
+    "empty": "You haven't subscribed to any copy trading yet.",
+    "openClosed": "{{open}} open · {{closed}} closed",
+    "active": "Active",
+    "paused": "Paused",
+    "tabs": {
+      "positions": "Positions",
+      "operations": "Operations"
+    },
+    "noPositions": "No positions in this period.",
+    "noOperations": "No operations in this period.",
+    "statusOpen": "Open",
+    "statusClosed": "Closed",
+    "statusLabel": "Status",
+    "symbol": "Symbol",
+    "pnlUsdt": "PnL (USDT)"
   },
   "copyDetail": {
     "loadingTitle": "Loading...",

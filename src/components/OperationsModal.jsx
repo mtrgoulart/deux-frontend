@@ -73,14 +73,12 @@ function OperationsModal({ position, onClose }) {
                                     <tr className="text-xs text-content-muted uppercase tracking-wider border-b border-border-subtle">
                                         <th className="text-left py-2 px-3 font-semibold">{t('copyExplore.side')}</th>
                                         <th className="text-left py-2 px-3 font-semibold">{t('copyExplore.date')}</th>
-                                        <th className="text-right py-2 px-3 font-semibold">{t('copyExplore.size')}</th>
                                         <th className="text-right py-2 px-3 font-semibold">{t('copyExplore.price')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {operations.map(op => {
                                         const isBuy = (op.side || '').toLowerCase() === 'buy';
-                                        const price = op.execution_price ?? op.price;
                                         return (
                                             <tr key={op.id} className="border-b border-border-subtle/50 hover:bg-surface-raised/30">
                                                 <td className="py-2 px-3">
@@ -96,10 +94,7 @@ function OperationsModal({ position, onClose }) {
                                                     {formatDateTime(op.date)}
                                                 </td>
                                                 <td className="py-2 px-3 text-right font-mono text-content-primary">
-                                                    {formatNumber(op.size, 6)}
-                                                </td>
-                                                <td className="py-2 px-3 text-right font-mono text-content-primary">
-                                                    {formatNumber(price, 4)}
+                                                    {formatNumber(op.execution_price, 4)}
                                                 </td>
                                             </tr>
                                         );

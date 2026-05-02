@@ -198,6 +198,7 @@ const navSectionsConfig = {
     links: [
       { path: '/copy', labelKey: 'nav.create', icon: IconPlusCircle, allowedGroups: ['Admin', 'Developer'] },
       { path: '/copy/explore', labelKey: 'nav.explore', icon: IconCompass },
+      { path: '/copy/dashboard', labelKey: 'nav.copyDashboard', icon: IconChart },
       { path: '/copy/subscriptions', labelKey: 'nav.subscriptions', icon: IconBell },
     ],
   },

@@ -23,6 +23,7 @@ import CopyCreatePage from './pages/CopyCreatePage';
 import ExplorePage from './pages/CopyExplorePage';
 import CopyDetailPage from './pages/CopyDetailPage';
 import CopySubscriptionPage from './pages/CopySubscriptionPage';
+import CopyDashboardPage from './pages/CopyDashboardPage';
 import MarketChartPage from './pages/MarketChartPage';
 import WalletPage from './pages/WalletPage';
 import SignalTracesPage from './pages/SignalTracesPage';
@@ -54,6 +55,7 @@ function App() {
             <Route path="commissions" element={<CommissionsPage />} />
 
             <Route path="copy/explore" element={<ExplorePage />} />
+            <Route path="copy/dashboard" element={<CopyDashboardPage />} />
             <Route path="copy/details/:id" element={<CopyDetailPage />} />
             <Route path="copy/subscriptions" element={<CopySubscriptionPage />} />
 

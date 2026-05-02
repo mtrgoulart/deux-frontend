@@ -102,7 +102,7 @@ function PositionsTable({ copytradingId, sharing, onShowOperations }) {
                                 <th className="text-left py-2 px-3 font-semibold">{t('copyExplore.closeDate')}</th>
                                 <th className="text-right py-2 px-3 font-semibold">{t('copyExplore.buyPrice')}</th>
                                 <th className="text-right py-2 px-3 font-semibold">{t('copyExplore.sellPrice')}</th>
-                                <th className="text-right py-2 px-3 font-semibold">{t('copyExplore.profit')}</th>
+                                <th className="text-right py-2 px-3 font-semibold">{t('copyExplore.cycleReturn')}</th>
                                 <th className="text-right py-2 px-3 font-semibold">{t('copyExplore.operations')}</th>
                             </tr>
                         </thead>
@@ -114,7 +114,7 @@ function PositionsTable({ copytradingId, sharing, onShowOperations }) {
                                     <td className="py-2 px-3 text-right font-mono text-content-primary">{formatNumber(pos.buy_price, 4)}</td>
                                     <td className="py-2 px-3 text-right font-mono text-content-primary">{formatNumber(pos.sell_price, 4)}</td>
                                     <td className="py-2 px-3 text-right">
-                                        <PnlValue value={pos.pnl} />
+                                        <PercentReturn value={pos.return_pct} />
                                     </td>
                                     <td className="py-2 px-3 text-right">
                                         <button
@@ -181,12 +181,15 @@ function SharingCard({
     onConfigChange,
     onShowDetail,
     isDetailActive,
+    onApplySizingToAll,
+    canApplyToAll,
 }) {
     const { t } = useTranslation();
     const pnl = sharing.pnl || 0;
     const virtualPct = Number(sharing.virtual_return_pct ?? 0);
     const cyclesTotal = Number(sharing.cycles_total ?? 0);
     const cyclesScoreable = Number(sharing.cycles_scoreable ?? 0);
+    const insufficientData = cyclesScoreable === 0;
     const percentInvalid = isSelected
         && config?.size_mode === 'percentage'
         && (() => {
@@ -204,7 +207,7 @@ function SharingCard({
                         : 'bg-surface border-border hover:border-border-accent/50'
             }`}
         >
-            {/* Top row: checkbox + symbol (title) + strategy name (subtitle) */}
+            {/* Identity row: checkbox + (symbol/return) + (instance name/cycles) */}
             <div className="flex items-start gap-3 cursor-pointer" onClick={onToggle}>
                 <div className={`mt-1 w-4 h-4 rounded-sm border-2 flex-shrink-0 transition-all ${
                     isSelected ? 'bg-accent border-accent' : 'border-content-muted'
@@ -214,58 +217,77 @@ function SharingCard({
                     )}
                 </div>
                 <div className="min-w-0 flex-1">
-                    <div className="font-bold text-content-primary text-base font-mono truncate">
-                        {sharing.symbol}
+                    <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                        <span className="font-bold text-content-primary text-base font-mono truncate">
+                            {sharing.symbol}
+                        </span>
+                        <span
+                            className={`text-base font-mono font-bold flex-shrink-0 ${
+                                insufficientData
+                                    ? 'text-content-muted'
+                                    : virtualPct >= 0 ? 'text-success' : 'text-danger'
+                            }`}
+                            title={t('copyExplore.compoundedNote')}
+                        >
+                            {insufficientData
+                                ? '—'
+                                : `${virtualPct >= 0 ? '+' : ''}${virtualPct.toFixed(2)}%`}
+                        </span>
                     </div>
-                    <div className="text-xs text-content-muted truncate" title={sharing.instance_name}>
-                        {sharing.instance_name}
+                    <div className="flex items-baseline justify-between gap-2">
+                        <span className="text-xs text-content-muted truncate" title={sharing.instance_name}>
+                            {sharing.instance_name}
+                        </span>
+                        <span className="text-[10px] text-content-muted flex-shrink-0">
+                            {cyclesTotal === 0
+                                ? t('copyExplore.noCyclesYet')
+                                : t('copyExplore.cyclesCoverage', { scoreable: cyclesScoreable, total: cyclesTotal })}
+                        </span>
                     </div>
                 </div>
             </div>
 
-            {/* Detail button (above metric, prominent) + Strategy Return % (primary) */}
-            <div className="flex items-center justify-end gap-3 mt-3">
+            {/* Subtle action row: Detail link + PnL footnote */}
+            <div className="mt-2 flex items-center justify-between text-[10px]">
                 <button
-                    onClick={onShowDetail}
-                    className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded transition-colors ${
+                    onClick={(e) => { e.stopPropagation(); onShowDetail(); }}
+                    className={`uppercase tracking-wider font-bold transition-colors ${
                         isDetailActive
-                            ? 'bg-accent text-white'
-                            : 'bg-surface-raised border border-border text-content-secondary hover:text-content-primary hover:border-accent'
+                            ? 'text-accent'
+                            : 'text-content-accent hover:text-accent'
                     }`}
                 >
-                    {t('copyExplore.detail')}
+                    {t('copyExplore.detail')} →
                 </button>
-                <div className="flex flex-col items-end" title={t('copyExplore.compoundedNote')}>
-                    <span className="text-[10px] text-content-muted uppercase tracking-wider">{t('copyExplore.strategyReturn')}</span>
-                    {cyclesScoreable === 0 ? (
-                        <span className="text-base font-mono font-bold text-content-muted">—</span>
-                    ) : (
-                        <span className={`text-base font-mono font-bold ${virtualPct >= 0 ? 'text-success' : 'text-danger'}`}>
-                            {virtualPct >= 0 ? '+' : ''}{virtualPct.toFixed(2)}%
-                        </span>
-                    )}
-                    <span className="text-[9px] text-content-muted">
-                        {cyclesTotal === 0
-                            ? t('copyExplore.noCyclesYet')
-                            : t('copyExplore.cyclesCoverage', { scoreable: cyclesScoreable, total: cyclesTotal })}
+                {pnl !== 0 && (
+                    <span className="text-content-muted font-mono">
+                        {t('copyExplore.pnl')}: {pnl >= 0 ? '+' : ''}{typeof pnl === 'number' ? pnl.toFixed(2) : pnl} USDT
                     </span>
-                    {pnl !== 0 && (
-                        <span className="text-[10px] text-content-muted mt-1 font-mono">
-                            {t('copyExplore.pnl')}: {pnl >= 0 ? '+' : ''}{typeof pnl === 'number' ? pnl.toFixed(2) : pnl} USDT
-                        </span>
-                    )}
-                </div>
+                )}
             </div>
 
             {/* Sizing controls (only when selected) */}
             {isSelected && (
                 <div className="mt-3 pt-3 border-t border-border-subtle">
-                    <span className="text-[10px] text-content-muted uppercase tracking-wider">{t('copyExplore.sizing')}</span>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10px] text-content-muted uppercase tracking-wider font-bold">
+                            {t('copyExplore.sizing')}
+                        </span>
+                        {canApplyToAll && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onApplySizingToAll(); }}
+                                className="text-[10px] text-content-accent hover:text-accent uppercase tracking-wider font-bold transition-colors"
+                                title={t('copyExplore.applyToAllTooltip')}
+                            >
+                                {t('copyExplore.applyToAll')} →
+                            </button>
+                        )}
+                    </div>
+                    <div className="flex items-stretch gap-2">
                         <select
                             value={config?.size_mode || 'percentage'}
                             onChange={e => onConfigChange('size_mode', e.target.value)}
-                            className="px-2 py-1.5 bg-surface border border-border text-content-primary rounded text-xs
+                            className="px-2.5 py-2 bg-surface border border-border text-content-primary rounded text-xs
                                      focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors"
                         >
                             <option value="percentage">{t('copyExplore.percentage')}</option>
@@ -275,7 +297,7 @@ function SharingCard({
                             type="number"
                             value={config?.size_value || ''}
                             onChange={e => onConfigChange('size_value', e.target.value)}
-                            className={`flex-1 px-2 py-1.5 bg-surface border text-content-primary rounded text-xs
+                            className={`flex-1 px-3 py-2 bg-surface border text-content-primary rounded text-sm font-mono
                                      focus:outline-none focus:ring-1 transition-colors ${
                                 percentInvalid
                                     ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20'
@@ -285,7 +307,7 @@ function SharingCard({
                             min="0"
                             {...(config?.size_mode === 'percentage' ? { max: '100' } : {})}
                         />
-                        <span className="text-xs text-content-muted">
+                        <span className="text-xs text-content-muted self-center w-10 text-right font-mono uppercase">
                             {config?.size_mode === 'flat_value' ? 'USDT' : '%'}
                         </span>
                     </div>
@@ -406,6 +428,49 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
             ...prev,
             [sharingId]: { ...prev[sharingId], [field]: value },
         }));
+    };
+
+    const selectedCount = sharings.filter(s => sharingConfigs[s.id]?.selected).length;
+    const allSelected = sharings.length > 0 && selectedCount === sharings.length;
+    const indeterminate = selectedCount > 0 && selectedCount < sharings.length;
+
+    const handleSelectAll = () => {
+        setSharingConfigs(prev => {
+            const next = { ...prev };
+            if (allSelected) {
+                sharings.forEach(s => {
+                    next[s.id] = { ...next[s.id], selected: false };
+                });
+            } else {
+                sharings.forEach(s => {
+                    next[s.id] = {
+                        ...next[s.id],
+                        selected: true,
+                        size_mode: next[s.id]?.size_mode || 'percentage',
+                        size_value: next[s.id]?.size_value || '100',
+                    };
+                });
+            }
+            return next;
+        });
+    };
+
+    const handleApplySizingToAll = (sourceSharingId) => {
+        const source = sharingConfigs[sourceSharingId];
+        if (!source) return;
+        setSharingConfigs(prev => {
+            const next = { ...prev };
+            Object.entries(prev).forEach(([id, cfg]) => {
+                if (cfg?.selected) {
+                    next[id] = {
+                        ...cfg,
+                        size_mode: source.size_mode,
+                        size_value: source.size_value,
+                    };
+                }
+            });
+            return next;
+        });
     };
 
     const handleConfirmCopy = () => {
@@ -555,10 +620,46 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
                 <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-0">
                     {/* LEFT FRAME: strategies list */}
                     <div className="border-b lg:border-b-0 lg:border-r border-border-subtle flex flex-col min-h-0">
-                        <div className="px-4 py-3 border-b border-border-subtle bg-surface-raised/40">
+                        <div className="px-4 py-3 border-b border-border-subtle bg-surface-raised/40 flex items-center justify-between gap-3">
                             <h4 className="text-xs font-bold text-content-secondary uppercase tracking-wider">
                                 {t('copyExplore.strategies')}
                             </h4>
+                            {sharings.length > 0 && (
+                                <div
+                                    className="flex items-center gap-2 cursor-pointer group select-none"
+                                    onClick={handleSelectAll}
+                                    role="checkbox"
+                                    aria-checked={allSelected ? 'true' : indeterminate ? 'mixed' : 'false'}
+                                    tabIndex={0}
+                                    onKeyDown={(e) => {
+                                        if (e.key === ' ' || e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleSelectAll();
+                                        }
+                                    }}
+                                >
+                                    <span className="text-[10px] text-content-secondary uppercase tracking-wider font-bold group-hover:text-content-primary transition-colors">
+                                        {t('copyExplore.selectAll')}
+                                    </span>
+                                    <div className={`w-4 h-4 rounded-sm border-2 flex-shrink-0 transition-all flex items-center justify-center ${
+                                        allSelected
+                                            ? 'bg-accent border-accent'
+                                            : indeterminate
+                                                ? 'bg-accent/40 border-accent'
+                                                : 'border-content-muted group-hover:border-content-secondary'
+                                    }`}>
+                                        {allSelected && (
+                                            <span className="text-white text-[10px] leading-none">✓</span>
+                                        )}
+                                        {indeterminate && (
+                                            <span className="block w-2 h-0.5 bg-white"></span>
+                                        )}
+                                    </div>
+                                    <span className="text-[10px] text-content-muted font-mono whitespace-nowrap">
+                                        {t('copyExplore.selectedOfTotal', { selected: selectedCount, total: sharings.length })}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 space-y-2">
                             {isLoadingDetails ? (
@@ -583,6 +684,8 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
                                             onToggle={() => handleToggleSharing(sharing.id)}
                                             onConfigChange={(field, value) => handleSharingConfigChange(sharing.id, field, value)}
                                             onShowDetail={() => setActiveDetailSharingId(sharing.id)}
+                                            onApplySizingToAll={() => handleApplySizingToAll(sharing.id)}
+                                            canApplyToAll={selectedCount > 1}
                                         />
                                     );
                                 })

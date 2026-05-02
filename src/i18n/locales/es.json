@@ -26,6 +26,7 @@
     "copy": "Copy",
     "create": "Crear",
     "explore": "Explorar",
+    "copyDashboard": "Panel",
     "subscriptions": "Suscripciones",
     "visualization": "Visualización",
     "signals": "Señales",
@@ -565,7 +566,41 @@
     "strategyReturn": "Retorno de la Estrategia",
     "cyclesCoverage": "basado en {{scoreable}} de {{total}} ciclos",
     "noCyclesYet": "aún no hay ciclos cerrados",
-    "compoundedNote": "compuesto sobre ciclos de señales cerrados"
+    "compoundedNote": "compuesto sobre ciclos de señales cerrados",
+    "selectAll": "Seleccionar todas",
+    "selectedOfTotal": "{{selected}} de {{total}}",
+    "applyToAll": "Aplicar a todas",
+    "applyToAllTooltip": "Aplicar este dimensionamiento a todas las estrategias seleccionadas",
+    "cycleReturn": "Retorno %"
+  },
+  "copyDashboard": {
+    "title": "Panel de Copy Trading",
+    "timeRange": {
+      "7d": "7d",
+      "30d": "30d",
+      "all": "Todo"
+    },
+    "kpis": {
+      "realizedPnl": "PnL Realizado",
+      "openPositions": "Posiciones Abiertas",
+      "activeSubscriptions": "Suscripciones Activas"
+    },
+    "mySubscriptions": "Mis Suscripciones",
+    "empty": "Aún no te has suscrito a ningún copy trading.",
+    "openClosed": "{{open}} abiertas · {{closed}} cerradas",
+    "active": "Activa",
+    "paused": "Pausada",
+    "tabs": {
+      "positions": "Posiciones",
+      "operations": "Operaciones"
+    },
+    "noPositions": "Sin posiciones en este período.",
+    "noOperations": "Sin operaciones en este período.",
+    "statusOpen": "Abierta",
+    "statusClosed": "Cerrada",
+    "statusLabel": "Estado",
+    "symbol": "Activo",
+    "pnlUsdt": "PnL (USDT)"
   },
   "copyDetail": {
     "loadingTitle": "Cargando...",
