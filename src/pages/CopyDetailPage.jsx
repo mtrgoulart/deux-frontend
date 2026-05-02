@@ -109,8 +109,8 @@ function CopyDetailPage() {
 
     // Chart configuration
     const hasChartData = chartData.length > 0;
-    const lastPnl = hasChartData ? chartData[chartData.length - 1].pnl : 0;
-    const chartColor = lastPnl >= 0 ? '#4ade80' : '#f87171';
+    const lastReturnPct = hasChartData ? Number(chartData[chartData.length - 1].return_pct ?? 0) : 0;
+    const chartColor = lastReturnPct >= 0 ? '#4ade80' : '#f87171';
 
     const lineChartData = hasChartData ? {
         labels: chartData.map(d => {
@@ -119,7 +119,7 @@ function CopyDetailPage() {
         }),
         datasets: [{
             label: t('copyDetail.pnlChartLabel'),
-            data: chartData.map(d => d.pnl),
+            data: chartData.map(d => Number(d.return_pct ?? 0)),
             borderColor: chartColor,
             backgroundColor: `${chartColor}20`,
             fill: true,
@@ -149,7 +149,10 @@ function CopyDetailPage() {
                 borderColor: 'rgba(128, 128, 128, 0.3)',
                 borderWidth: 1,
                 callbacks: {
-                    label: (context) => `P&L: $${context.parsed.y.toFixed(2)}`
+                    label: (context) => {
+                        const v = context.parsed.y;
+                        return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+                    }
                 }
             }
         },
@@ -162,7 +165,7 @@ function CopyDetailPage() {
                 ticks: {
                     color: '#9ca3af',
                     font: { size: 10 },
-                    callback: (value) => `$${value}`
+                    callback: (value) => `${value}%`
                 },
                 grid: { color: 'rgba(128, 128, 128, 0.12)' }
             }
@@ -214,8 +217,8 @@ function CopyDetailPage() {
                             </div>
                             <div className="flex items-center gap-3 bg-surface-primary rounded-lg px-5 py-2.5 border border-border-subtle">
                                 <span className="text-xs text-content-muted uppercase tracking-wider">{t('copyDetail.totalPnl')}</span>
-                                <span className={`text-2xl font-bold font-mono ${lastPnl >= 0 ? 'text-success' : 'text-danger'}`}>
-                                    {lastPnl >= 0 ? '+' : ''}${lastPnl.toFixed(2)}
+                                <span className={`text-2xl font-bold font-mono ${lastReturnPct >= 0 ? 'text-success' : 'text-danger'}`}>
+                                    {lastReturnPct >= 0 ? '+' : ''}{lastReturnPct.toFixed(2)}%
                                 </span>
                             </div>
                         </div>
@@ -367,9 +370,9 @@ function CopyDetailPage() {
                                                             {pos.sell_price != null ? `$${pos.sell_price.toFixed(2)}` : '--'}
                                                         </td>
                                                         <td className="px-6 py-4 text-sm font-mono font-bold text-right">
-                                                            {pos.pnl != null ? (
-                                                                <span className={pos.pnl >= 0 ? 'text-success' : 'text-danger'}>
-                                                                    {pos.pnl >= 0 ? '+' : ''}{pos.pnl.toFixed(2)}
+                                                            {pos.return_pct != null ? (
+                                                                <span className={pos.return_pct >= 0 ? 'text-success' : 'text-danger'}>
+                                                                    {pos.return_pct >= 0 ? '+' : ''}{pos.return_pct.toFixed(2)}%
                                                                 </span>
                                                             ) : '--'}
                                                         </td>
