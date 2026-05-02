@@ -1,22 +1,339 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../utils/api';
+import OperationsModal from './OperationsModal';
+
+function formatDateTime(value) {
+    if (!value) return '-';
+    try {
+        const d = new Date(value);
+        return d.toLocaleString();
+    } catch {
+        return String(value);
+    }
+}
+
+function formatNumber(value, digits = 4) {
+    if (value === null || value === undefined) return '-';
+    const num = Number(value);
+    if (Number.isNaN(num)) return '-';
+    return num.toLocaleString(undefined, {
+        maximumFractionDigits: digits,
+        minimumFractionDigits: 0,
+    });
+}
+
+function PnlValue({ value }) {
+    const num = typeof value === 'number' ? value : parseFloat(value);
+    const safe = Number.isFinite(num) ? num : 0;
+    const positive = safe >= 0;
+    return (
+        <span className={`font-mono font-bold ${positive ? 'text-success' : 'text-danger'}`}>
+            {positive ? '+' : ''}{safe.toFixed(2)}
+            <span className="text-xs text-content-muted ml-1">USDT</span>
+        </span>
+    );
+}
+
+function PercentReturn({ value }) {
+    const num = typeof value === 'number' ? value : parseFloat(value);
+    const safe = Number.isFinite(num) ? num : 0;
+    const positive = safe >= 0;
+    return (
+        <span className={`font-mono font-bold ${positive ? 'text-success' : 'text-danger'}`}>
+            {positive ? '+' : ''}{safe.toFixed(2)}%
+        </span>
+    );
+}
+
+const POSITIONS_PAGE_SIZE = 10;
+
+function PositionsTable({ copytradingId, sharing, onShowOperations }) {
+    const { t } = useTranslation();
+    const [page, setPage] = useState(1);
+
+    useEffect(() => {
+        setPage(1);
+    }, [sharing?.id]);
+
+    const { data, isLoading } = useQuery({
+        queryKey: ['sharing_owner_positions', copytradingId, sharing?.id, page],
+        queryFn: async () => {
+            const res = await apiFetch(
+                `/copytrading/${copytradingId}/sharing/${sharing.id}/positions?page=${page}&limit=${POSITIONS_PAGE_SIZE}`
+            );
+            return res.json();
+        },
+        enabled: !!sharing?.id && !!copytradingId,
+        keepPreviousData: true,
+    });
+
+    const positions = data?.positions || [];
+    const totalPages = data?.total_pages || 0;
+    const totalCount = data?.total_count || 0;
+
+    return (
+        <div className="flex flex-col h-full">
+            <div className="px-4 py-3 border-b border-border-subtle bg-surface-raised/40">
+                <h4 className="text-xs font-bold text-content-secondary uppercase tracking-wider">
+                    {t('copyExplore.ownerPositions')}
+                </h4>
+                <p className="text-xs text-content-muted mt-0.5">
+                    {sharing?.symbol} <span className="text-content-accent">// {sharing?.instance_name}</span>
+                    <span className="ml-2 text-content-muted">· {t('copyExplore.closedPositionsOnly')}</span>
+                </p>
+            </div>
+
+            <div className="flex-1 overflow-auto">
+                {isLoading ? (
+                    <div className="py-8 text-center text-content-muted text-sm">
+                        {t('copyExplore.loadingPositions')}
+                    </div>
+                ) : positions.length === 0 ? (
+                    <div className="py-8 text-center text-content-muted text-sm">
+                        {t('copyExplore.noPositions')}
+                    </div>
+                ) : (
+                    <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-surface-raised/80 backdrop-blur z-10">
+                            <tr className="text-content-muted uppercase tracking-wider border-b border-border-subtle">
+                                <th className="text-left py-2 px-3 font-semibold">{t('copyExplore.entryDate')}</th>
+                                <th className="text-left py-2 px-3 font-semibold">{t('copyExplore.closeDate')}</th>
+                                <th className="text-right py-2 px-3 font-semibold">{t('copyExplore.buyPrice')}</th>
+                                <th className="text-right py-2 px-3 font-semibold">{t('copyExplore.sellPrice')}</th>
+                                <th className="text-right py-2 px-3 font-semibold">{t('copyExplore.profit')}</th>
+                                <th className="text-right py-2 px-3 font-semibold">{t('copyExplore.operations')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {positions.map(pos => (
+                                <tr key={pos.id} className="border-b border-border-subtle/50 hover:bg-surface-raised/30">
+                                    <td className="py-2 px-3 text-content-secondary font-mono">{formatDateTime(pos.created_at)}</td>
+                                    <td className="py-2 px-3 text-content-secondary font-mono">{formatDateTime(pos.closed_at)}</td>
+                                    <td className="py-2 px-3 text-right font-mono text-content-primary">{formatNumber(pos.buy_price, 4)}</td>
+                                    <td className="py-2 px-3 text-right font-mono text-content-primary">{formatNumber(pos.sell_price, 4)}</td>
+                                    <td className="py-2 px-3 text-right">
+                                        <PnlValue value={pos.pnl} />
+                                    </td>
+                                    <td className="py-2 px-3 text-right">
+                                        <button
+                                            onClick={() => onShowOperations(pos)}
+                                            className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded
+                                                     bg-surface border border-border text-content-secondary
+                                                     hover:bg-surface-raised hover:text-content-primary hover:border-border-accent
+                                                     transition-colors"
+                                        >
+                                            {t('copyExplore.operations')}
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </div>
+
+            {totalCount > 0 && (
+                <div className="px-4 py-2 border-t border-border-subtle bg-surface-raised/40 flex items-center justify-between text-xs">
+                    <span className="text-content-muted">
+                        {t('common.showing')}{' '}
+                        <span className="text-content-accent font-bold font-mono">{((page - 1) * POSITIONS_PAGE_SIZE) + 1}</span>
+                        {' '}{t('common.to')}{' '}
+                        <span className="text-content-accent font-bold font-mono">{Math.min(page * POSITIONS_PAGE_SIZE, totalCount)}</span>
+                        {' '}{t('common.of')}{' '}
+                        <span className="text-content-accent font-bold font-mono">{totalCount}</span>
+                    </span>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page <= 1}
+                            className="px-2.5 py-1 bg-surface border border-border text-content-secondary rounded
+                                     hover:bg-surface-raised hover:text-content-primary
+                                     disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                            {t('common.prev')}
+                        </button>
+                        <span className="text-content-secondary font-mono">
+                            <span className="text-content-accent font-bold">{page}</span> / {totalPages || 1}
+                        </span>
+                        <button
+                            onClick={() => setPage(p => Math.min(totalPages || 1, p + 1))}
+                            disabled={page >= totalPages}
+                            className="px-2.5 py-1 bg-surface border border-border text-content-secondary rounded
+                                     hover:bg-surface-raised hover:text-content-primary
+                                     disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                            {t('common.next')}
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function SharingCard({
+    sharing,
+    config,
+    isSelected,
+    onToggle,
+    onConfigChange,
+    onShowDetail,
+    isDetailActive,
+}) {
+    const { t } = useTranslation();
+    const pnl = sharing.pnl || 0;
+    const virtualPct = Number(sharing.virtual_return_pct ?? 0);
+    const cyclesTotal = Number(sharing.cycles_total ?? 0);
+    const cyclesScoreable = Number(sharing.cycles_scoreable ?? 0);
+    const percentInvalid = isSelected
+        && config?.size_mode === 'percentage'
+        && (() => {
+            const v = parseFloat(config.size_value);
+            return isNaN(v) || v < 0 || v > 100;
+        })();
+
+    return (
+        <div
+            className={`p-3 rounded-lg border transition-all duration-200 ${
+                isDetailActive
+                    ? 'border-accent bg-accent-muted/40 ring-2 ring-accent/30'
+                    : isSelected
+                        ? 'bg-accent-muted/20 border-border-accent'
+                        : 'bg-surface border-border hover:border-border-accent/50'
+            }`}
+        >
+            {/* Top row: checkbox + symbol (title) + strategy name (subtitle) */}
+            <div className="flex items-start gap-3 cursor-pointer" onClick={onToggle}>
+                <div className={`mt-1 w-4 h-4 rounded-sm border-2 flex-shrink-0 transition-all ${
+                    isSelected ? 'bg-accent border-accent' : 'border-content-muted'
+                }`}>
+                    {isSelected && (
+                        <div className="w-full h-full flex items-center justify-center text-white text-[10px] leading-none">✓</div>
+                    )}
+                </div>
+                <div className="min-w-0 flex-1">
+                    <div className="font-bold text-content-primary text-base font-mono truncate">
+                        {sharing.symbol}
+                    </div>
+                    <div className="text-xs text-content-muted truncate" title={sharing.instance_name}>
+                        {sharing.instance_name}
+                    </div>
+                </div>
+            </div>
+
+            {/* Detail button (above metric, prominent) + Strategy Return % (primary) */}
+            <div className="flex items-center justify-end gap-3 mt-3">
+                <button
+                    onClick={onShowDetail}
+                    className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded transition-colors ${
+                        isDetailActive
+                            ? 'bg-accent text-white'
+                            : 'bg-surface-raised border border-border text-content-secondary hover:text-content-primary hover:border-accent'
+                    }`}
+                >
+                    {t('copyExplore.detail')}
+                </button>
+                <div className="flex flex-col items-end" title={t('copyExplore.compoundedNote')}>
+                    <span className="text-[10px] text-content-muted uppercase tracking-wider">{t('copyExplore.strategyReturn')}</span>
+                    {cyclesScoreable === 0 ? (
+                        <span className="text-base font-mono font-bold text-content-muted">—</span>
+                    ) : (
+                        <span className={`text-base font-mono font-bold ${virtualPct >= 0 ? 'text-success' : 'text-danger'}`}>
+                            {virtualPct >= 0 ? '+' : ''}{virtualPct.toFixed(2)}%
+                        </span>
+                    )}
+                    <span className="text-[9px] text-content-muted">
+                        {cyclesTotal === 0
+                            ? t('copyExplore.noCyclesYet')
+                            : t('copyExplore.cyclesCoverage', { scoreable: cyclesScoreable, total: cyclesTotal })}
+                    </span>
+                    {pnl !== 0 && (
+                        <span className="text-[10px] text-content-muted mt-1 font-mono">
+                            {t('copyExplore.pnl')}: {pnl >= 0 ? '+' : ''}{typeof pnl === 'number' ? pnl.toFixed(2) : pnl} USDT
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {/* Sizing controls (only when selected) */}
+            {isSelected && (
+                <div className="mt-3 pt-3 border-t border-border-subtle">
+                    <span className="text-[10px] text-content-muted uppercase tracking-wider">{t('copyExplore.sizing')}</span>
+                    <div className="flex items-center gap-2 mt-1">
+                        <select
+                            value={config?.size_mode || 'percentage'}
+                            onChange={e => onConfigChange('size_mode', e.target.value)}
+                            className="px-2 py-1.5 bg-surface border border-border text-content-primary rounded text-xs
+                                     focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors"
+                        >
+                            <option value="percentage">{t('copyExplore.percentage')}</option>
+                            <option value="flat_value">{t('copyExplore.flatValue')}</option>
+                        </select>
+                        <input
+                            type="number"
+                            value={config?.size_value || ''}
+                            onChange={e => onConfigChange('size_value', e.target.value)}
+                            className={`flex-1 px-2 py-1.5 bg-surface border text-content-primary rounded text-xs
+                                     focus:outline-none focus:ring-1 transition-colors ${
+                                percentInvalid
+                                    ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20'
+                                    : 'border-border focus:border-accent focus:ring-accent/20'
+                            }`}
+                            placeholder={config?.size_mode === 'flat_value' ? 'USDT' : '%'}
+                            min="0"
+                            {...(config?.size_mode === 'percentage' ? { max: '100' } : {})}
+                        />
+                        <span className="text-xs text-content-muted">
+                            {config?.size_mode === 'flat_value' ? 'USDT' : '%'}
+                        </span>
+                    </div>
+                    {percentInvalid && (
+                        <p className="text-xs text-red-400 mt-1">0-100%</p>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
 
 function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoading }) {
     const { t } = useTranslation();
-    // Per-sharing config: { [sharingId]: { selected, size_mode, size_value } }
     const [sharingConfigs, setSharingConfigs] = useState({});
     const [selectedApiKey, setSelectedApiKey] = useState('');
     const [sizeAmount, setSizeAmount] = useState('10');
+    const [activeDetailSharingId, setActiveDetailSharingId] = useState(null);
+    const [operationsForPosition, setOperationsForPosition] = useState(null);
 
-    const { data: apiKeys = [] } = useQuery({ queryKey: ['user_apikeys'], queryFn: async () => { const res = await apiFetch('/get_user_apikeys'); return (await res.json()).user_apikeys || []; }});
-    const { data: details, isLoading: isLoadingDetails } = useQuery({ queryKey: ['copytrading_details', copyConfig.id], queryFn: async () => { const res = await apiFetch(`/copytrading/${copyConfig.id}`); return res.json(); }});
-    const { data: userSubscriptionsData, isLoading: isLoadingSubscriptions } = useQuery({ queryKey: ['copytrading_subscriptions'], queryFn: async () => { const res = await apiFetch('/copytrading/subscriptions'); const data = await res.json(); return data.subscriptions || []; }, enabled: isEditing, });
+    const { data: apiKeys = [] } = useQuery({
+        queryKey: ['user_apikeys'],
+        queryFn: async () => {
+            const res = await apiFetch('/get_user_apikeys');
+            return (await res.json()).user_apikeys || [];
+        },
+    });
+
+    const { data: details, isLoading: isLoadingDetails } = useQuery({
+        queryKey: ['copytrading_details', copyConfig.id],
+        queryFn: async () => {
+            const res = await apiFetch(`/copytrading/${copyConfig.id}`);
+            return res.json();
+        },
+    });
+
+    const { data: userSubscriptionsData, isLoading: isLoadingSubscriptions } = useQuery({
+        queryKey: ['copytrading_subscriptions'],
+        queryFn: async () => {
+            const res = await apiFetch('/copytrading/subscriptions');
+            const data = await res.json();
+            return data.subscriptions || [];
+        },
+        enabled: isEditing,
+    });
 
     useEffect(() => {
         if (!isEditing && details?.sharings) {
-            // New subscription: select all sharings with default percentage 100
             const configs = {};
             details.sharings.forEach(s => {
                 configs[s.id] = { selected: true, size_mode: 'percentage', size_value: '100' };
@@ -32,27 +349,23 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
                 setSelectedApiKey(primarySub.api_key_id);
                 setSizeAmount(primarySub.max_amount_size || '10');
 
-                // Populate from subscribed_sharings (jsonb array)
                 const configs = {};
-                // Initialize all sharings as unselected
                 if (details?.sharings) {
                     details.sharings.forEach(s => {
                         configs[s.id] = { selected: false, size_mode: 'percentage', size_value: '100' };
                     });
                 }
-                // Mark subscribed ones with their config
                 if (primarySub.subscribed_sharings) {
                     primarySub.subscribed_sharings.forEach(s => {
                         const mode = s.size_mode || 'percentage';
                         const rawAmount = s.size_amount || 100;
-                        // DB stores percentage as decimal (0.80 = 80%), convert back for display
                         const displayValue = mode === 'percentage' && rawAmount <= 1
                             ? rawAmount * 100
                             : rawAmount;
                         configs[s.sharing_id] = {
                             selected: true,
                             size_mode: mode,
-                            size_value: String(displayValue)
+                            size_value: String(displayValue),
                         };
                     });
                 }
@@ -61,6 +374,21 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
         }
     }, [isEditing, details, userSubscriptionsData, isLoadingSubscriptions, copyConfig.id]);
 
+    const sharings = details?.sharings || [];
+
+    const totalPnl = useMemo(() => {
+        if (typeof details?.total_pnl === 'number') return details.total_pnl;
+        return sharings.reduce((acc, s) => acc + (Number(s.pnl) || 0), 0);
+    }, [details, sharings]);
+
+    const virtualReturnPct = Number(details?.virtual_return_pct ?? 0);
+    const cyclesScoreable = Number(details?.cycles_scoreable ?? 0);
+    const cyclesTotal = Number(details?.cycles_total ?? 0);
+
+    const ownerName = details?.creator_name || copyConfig.creator || '-';
+    const subscriberCount = details?.subscriber_count ?? null;
+    const copyName = details?.name || copyConfig.name;
+
     const handleToggleSharing = (sharingId) => {
         setSharingConfigs(prev => ({
             ...prev,
@@ -68,22 +396,16 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
                 ...prev[sharingId],
                 selected: !prev[sharingId]?.selected,
                 size_mode: prev[sharingId]?.size_mode || 'percentage',
-                size_value: prev[sharingId]?.size_value || '100'
-            }
+                size_value: prev[sharingId]?.size_value || '100',
+            },
         }));
     };
 
     const handleSharingConfigChange = (sharingId, field, value) => {
         setSharingConfigs(prev => ({
             ...prev,
-            [sharingId]: { ...prev[sharingId], [field]: value }
+            [sharingId]: { ...prev[sharingId], [field]: value },
         }));
-    };
-
-    const isPercentageInvalid = (config) => {
-        if (config.size_mode !== 'percentage') return false;
-        const val = parseFloat(config.size_value);
-        return isNaN(val) || val < 0 || val > 100;
     };
 
     const handleConfirmCopy = () => {
@@ -94,8 +416,7 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
         const selectedEntries = Object.entries(sharingConfigs).filter(([_, c]) => c.selected);
         if (selectedEntries.length === 0) { alert(t('copyExplore.selectSharingAlert')); return; }
 
-        // Validate per-sharing size values
-        for (const [id, config] of selectedEntries) {
+        for (const [, config] of selectedEntries) {
             const val = parseFloat(config.size_value);
             if (isNaN(val) || val <= 0) {
                 alert(t('copyExplore.validSizeValueAlert'));
@@ -112,7 +433,7 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
             sharings: selectedEntries.map(([id, c]) => ({
                 sharing_id: parseInt(id),
                 size_mode: c.size_mode,
-                size_value: parseFloat(c.size_value)
+                size_value: parseFloat(c.size_value),
             })),
             api_key_id: selectedApiKey,
             size_amount: numericSize,
@@ -121,184 +442,173 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
         onConfirm(payload);
     };
 
+    const activeSharing = useMemo(
+        () => sharings.find(s => s.id === activeDetailSharingId) || null,
+        [sharings, activeDetailSharingId]
+    );
+
     return (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="max-w-2xl w-full bg-surface border border-border rounded-lg shadow-2xl overflow-hidden">
-                {/* Header */}
+            <div className="w-full max-w-7xl max-h-[92vh] bg-surface border border-border rounded-lg shadow-2xl overflow-hidden flex flex-col">
+                {/* ============================ HEADER FRAME ============================ */}
                 <div className="bg-surface-raised/50 border-b border-border-subtle px-6 py-4">
-                    <h3 className="text-xl font-bold bg-gradient-to-r from-teal-400 to-teal-600 bg-clip-text text-transparent uppercase tracking-wider">
-                        {isEditing ? t('copyExplore.reviewSubscription') : t('copyExplore.copyStrategy')}
-                    </h3>
-                    <p className="text-sm text-content-muted mt-1">
-                        {copyConfig.name} <span className="text-content-accent">// {t('copyExplore.by')} {copyConfig.creator}</span>
-                    </p>
-                </div>
-
-                {/* Content */}
-                <div className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        {/* API Key selector */}
-                        <div>
-                            <label className="block text-xs font-semibold text-content-accent mb-2 uppercase tracking-wider">
-                                {t('copyExplore.apiKey')}
-                            </label>
-                            <select
-                                value={selectedApiKey}
-                                onChange={e => setSelectedApiKey(e.target.value)}
-                                disabled={isEditing}
-                                className="w-full px-4 py-3 bg-surface-primary border border-border text-content-primary rounded text-sm
-                                         focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20
-                                         transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <option value="">{t('copyExplore.selectApiKey')}</option>
-                                {apiKeys.map(key => (
-                                    <option key={key.api_key_id} value={key.api_key_id}>
-                                        {key.name}
-                                    </option>
-                                ))}
-                            </select>
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="min-w-0">
+                            <h3 className="text-xl font-bold bg-gradient-to-r from-teal-400 to-teal-600 bg-clip-text text-transparent uppercase tracking-wider truncate">
+                                {copyName}
+                            </h3>
+                            <div className="text-xs text-content-muted mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                <span>
+                                    <span className="text-content-muted uppercase tracking-wider">{t('copyExplore.owner')}:</span>{' '}
+                                    <span className="text-content-accent font-bold">{ownerName}</span>
+                                </span>
+                                {subscriberCount !== null && (
+                                    <span>
+                                        <span className="text-content-muted uppercase tracking-wider">{t('copyExplore.subscribers')}:</span>{' '}
+                                        <span className="text-content-accent font-bold font-mono">{subscriberCount}</span>
+                                    </span>
+                                )}
+                            </div>
                         </div>
 
-                        {/* Max investment */}
+                        {/* Strategy Return % pill (primary) + Owner realized PnL (secondary) */}
+                        <div className="flex flex-col items-end gap-1">
+                            <div className="bg-surface border border-border rounded-lg px-4 py-2 flex flex-col items-end min-w-[180px]"
+                                 title={t('copyExplore.compoundedNote')}>
+                                <span className="text-[10px] text-content-muted uppercase tracking-wider">{t('copyExplore.strategyReturn')}</span>
+                                {cyclesScoreable === 0 ? (
+                                    <span className="font-mono font-bold text-content-muted">—</span>
+                                ) : (
+                                    <PercentReturn value={virtualReturnPct} />
+                                )}
+                                <span className="text-[10px] text-content-muted mt-0.5">
+                                    {cyclesTotal === 0
+                                        ? t('copyExplore.noCyclesYet')
+                                        : t('copyExplore.cyclesCoverage', { scoreable: cyclesScoreable, total: cyclesTotal })}
+                                </span>
+                            </div>
+                            {totalPnl !== 0 && (
+                                <div className="text-[11px] text-content-muted flex items-center gap-1.5">
+                                    <span className="uppercase tracking-wider">{t('copyExplore.totalPnl')}:</span>
+                                    <PnlValue value={totalPnl} />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Header inputs row */}
+                    <div className={`grid ${isEditing ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'} gap-4 mt-4`}>
+                        {!isEditing && (
+                            <div>
+                                <label className="block text-xs font-semibold text-content-accent mb-1.5 uppercase tracking-wider">
+                                    {t('copyExplore.apiKey')}
+                                </label>
+                                <select
+                                    value={selectedApiKey}
+                                    onChange={e => setSelectedApiKey(e.target.value)}
+                                    className="w-full px-3 py-2 bg-surface-primary border border-border text-content-primary rounded text-sm
+                                             focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-colors"
+                                >
+                                    <option value="">{t('copyExplore.selectApiKey')}</option>
+                                    {apiKeys.map(key => (
+                                        <option key={key.api_key_id} value={key.api_key_id}>
+                                            {key.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
                         <div>
-                            <label className="block text-xs font-semibold text-content-accent mb-2 uppercase tracking-wider">
-                                {t('copyExplore.maxInvestment')}
-                            </label>
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                                <label className="block text-xs font-semibold text-content-accent uppercase tracking-wider">
+                                    {t('copyExplore.maxInvestment')}
+                                </label>
+                                <span
+                                    className="relative group inline-flex items-center justify-center w-4 h-4 rounded-full
+                                             bg-surface-raised border border-border text-content-muted text-[10px] font-bold cursor-help"
+                                    aria-label={t('copyExplore.maxInvestmentTooltip')}
+                                >
+                                    ?
+                                    <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64
+                                                   bg-surface-primary border border-border rounded-lg px-3 py-2 text-[11px] text-content-secondary
+                                                   shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity normal-case tracking-normal
+                                                   z-30">
+                                        {t('copyExplore.maxInvestmentTooltip')}
+                                    </span>
+                                </span>
+                            </div>
                             <input
                                 type="number"
                                 value={sizeAmount}
                                 onChange={e => setSizeAmount(e.target.value)}
-                                className="w-full px-4 py-3 bg-surface-primary border border-border text-content-primary rounded text-sm
-                                         focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20
-                                         transition-colors"
+                                className="w-full px-3 py-2 bg-surface-primary border border-border text-content-primary rounded text-sm
+                                         focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-colors"
                                 placeholder={t('copyExplore.investmentPlaceholder')}
                                 min="0"
                             />
                         </div>
                     </div>
+                </div>
 
-                    {/* Sharings selection with per-sharing sizing */}
-                    <div>
-                        <label className="block text-xs font-semibold text-content-accent mb-3 uppercase tracking-wider">
-                            {t('copyExplore.selectSharings')}
-                        </label>
-                        <div className="bg-surface-primary border border-border rounded-lg p-3 max-h-80 overflow-y-auto space-y-2">
+                {/* ============================ BODY: LEFT + RIGHT FRAMES ============================ */}
+                <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-0">
+                    {/* LEFT FRAME: strategies list */}
+                    <div className="border-b lg:border-b-0 lg:border-r border-border-subtle flex flex-col min-h-0">
+                        <div className="px-4 py-3 border-b border-border-subtle bg-surface-raised/40">
+                            <h4 className="text-xs font-bold text-content-secondary uppercase tracking-wider">
+                                {t('copyExplore.strategies')}
+                            </h4>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2">
                             {isLoadingDetails ? (
-                                <div className="py-6 flex flex-col items-center gap-3">
-                                    <div className="flex items-end justify-center gap-1 h-8">
-                                        {[0, 1, 2, 3, 4].map((i) => (
-                                            <div
-                                                key={i}
-                                                className="w-1.5 rounded-full bg-gradient-to-t from-teal-600 to-teal-400"
-                                                style={{
-                                                    animation: 'sharings-loader 1.2s ease-in-out infinite',
-                                                    animationDelay: `${i * 0.15}s`,
-                                                    height: '20%',
-                                                }}
-                                            />
-                                        ))}
-                                        <style>{`
-                                            @keyframes sharings-loader {
-                                                0%, 100% { height: 20%; opacity: 0.4; }
-                                                50% { height: 100%; opacity: 1; }
-                                            }
-                                        `}</style>
-                                    </div>
-                                    <p className="text-content-muted text-sm">{t('copyExplore.loadingSharings')}</p>
+                                <div className="py-8 text-center text-content-muted text-sm">
+                                    {t('copyExplore.loadingSharings')}
+                                </div>
+                            ) : sharings.length === 0 ? (
+                                <div className="py-8 text-center text-content-muted text-sm">
+                                    {t('copyExplore.noSharings')}
                                 </div>
                             ) : (
-                                details?.sharings?.map(sharing => {
+                                sharings.map(sharing => {
                                     const config = sharingConfigs[sharing.id] || {};
                                     const isSelected = !!config.selected;
-                                    const pnl = sharing.pnl || 0;
-                                    const percentInvalid = isSelected && isPercentageInvalid(config);
                                     return (
-                                        <div
+                                        <SharingCard
                                             key={sharing.id}
-                                            onClick={() => handleToggleSharing(sharing.id)}
-                                            className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border ${
-                                                isSelected
-                                                    ? 'bg-accent-muted border-border-accent text-content-primary'
-                                                    : 'bg-surface border-border hover:bg-surface-raised hover:border-border-accent/50 text-content-secondary'
-                                            }`}
-                                        >
-                                            {/* Top row: checkbox + name + symbol badge */}
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-4 h-4 rounded-sm border-2 flex-shrink-0 transition-all ${
-                                                    isSelected ? 'bg-accent border-accent' : 'border-content-muted'
-                                                }`}>
-                                                    {isSelected && (
-                                                        <div className="w-full h-full flex items-center justify-center text-white text-xs">✓</div>
-                                                    )}
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <span className="font-bold truncate block">{sharing.instance_name}</span>
-                                                    <span className="inline-block mt-0.5 px-2 py-0.5 text-xs font-mono bg-surface-raised/60 text-content-muted rounded">
-                                                        {sharing.symbol}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            {/* Bottom section: PnL + Sizing (only when selected) */}
-                                            {isSelected && (
-                                                <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-border-subtle" onClick={e => e.stopPropagation()}>
-                                                    {/* PnL column */}
-                                                    <div>
-                                                        <span className="text-xs text-content-muted uppercase tracking-wider">{t('copyExplore.pnl')}</span>
-                                                        <div className="mt-1">
-                                                            <span className={`text-base font-bold ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {pnl >= 0 ? '+' : ''}{typeof pnl === 'number' ? pnl.toFixed(2) : pnl}
-                                                            </span>
-                                                            <span className="text-xs text-content-muted ml-1">USDT</span>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Sizing column */}
-                                                    <div>
-                                                        <span className="text-xs text-content-muted uppercase tracking-wider">{t('copyExplore.sizing')}</span>
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                            <select
-                                                                value={config.size_mode || 'percentage'}
-                                                                onChange={e => handleSharingConfigChange(sharing.id, 'size_mode', e.target.value)}
-                                                                className="px-2 py-1.5 bg-surface border border-border text-content-primary rounded text-xs
-                                                                         focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors"
-                                                            >
-                                                                <option value="percentage">{t('copyExplore.percentage')}</option>
-                                                                <option value="flat_value">{t('copyExplore.flatValue')}</option>
-                                                            </select>
-                                                            <input
-                                                                type="number"
-                                                                value={config.size_value || ''}
-                                                                onChange={e => handleSharingConfigChange(sharing.id, 'size_value', e.target.value)}
-                                                                className={`w-20 px-2 py-1.5 bg-surface border text-content-primary rounded text-xs
-                                                                         focus:outline-none focus:ring-1 transition-colors ${
-                                                                    percentInvalid
-                                                                        ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20'
-                                                                        : 'border-border focus:border-accent focus:ring-accent/20'
-                                                                }`}
-                                                                placeholder={config.size_mode === 'flat_value' ? 'USDT' : '%'}
-                                                                min="0"
-                                                                {...(config.size_mode === 'percentage' ? { max: '100' } : {})}
-                                                            />
-                                                            <span className="text-xs text-content-muted">
-                                                                {config.size_mode === 'flat_value' ? 'USDT' : '%'}
-                                                            </span>
-                                                        </div>
-                                                        {percentInvalid && (
-                                                            <p className="text-xs text-red-400 mt-1">0-100%</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
+                                            sharing={sharing}
+                                            config={config}
+                                            isSelected={isSelected}
+                                            isDetailActive={activeDetailSharingId === sharing.id}
+                                            onToggle={() => handleToggleSharing(sharing.id)}
+                                            onConfigChange={(field, value) => handleSharingConfigChange(sharing.id, field, value)}
+                                            onShowDetail={() => setActiveDetailSharingId(sharing.id)}
+                                        />
                                     );
                                 })
                             )}
                         </div>
                     </div>
+
+                    {/* RIGHT FRAME: positions table */}
+                    <div className="flex flex-col min-h-0 bg-surface-primary/40">
+                        {activeSharing ? (
+                            <PositionsTable
+                                copytradingId={copyConfig.id}
+                                sharing={activeSharing}
+                                onShowOperations={(pos) => setOperationsForPosition(pos)}
+                            />
+                        ) : (
+                            <div className="flex-1 flex items-center justify-center p-8">
+                                <p className="text-sm text-content-muted text-center max-w-xs">
+                                    {t('copyExplore.selectStrategyToView')}
+                                </p>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                {/* Footer actions */}
+                {/* ============================ FOOTER ============================ */}
                 <div className="bg-surface-raised/30 border-t border-border-subtle px-6 py-4 flex justify-end gap-3">
                     <button
                         onClick={onClose}
@@ -318,10 +628,19 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
                                  disabled:opacity-50 disabled:cursor-wait
                                  focus:outline-none focus:ring-2 focus:ring-accent/20"
                     >
-                        {isLoading ? (isEditing ? t('copyExplore.saving') : t('copyExplore.copying')) : (isEditing ? t('copyExplore.saveChanges') : t('copyExplore.copyTrading'))}
+                        {isLoading
+                            ? (isEditing ? t('copyExplore.saving') : t('copyExplore.copying'))
+                            : (isEditing ? t('copyExplore.saveChanges') : t('copyExplore.copyTrading'))}
                     </button>
                 </div>
             </div>
+
+            {operationsForPosition && (
+                <OperationsModal
+                    position={operationsForPosition}
+                    onClose={() => setOperationsForPosition(null)}
+                />
+            )}
         </div>
     );
 }

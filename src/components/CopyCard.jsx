@@ -13,14 +13,35 @@ import userIcon from '/icons/user.svg';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler);
 
-function CopyCard({ id, name, creator, apy, chartData, isSubscribed, onPrimaryAction, onExitAction }) {
+function CopyCard({
+  id,
+  name,
+  creator,
+  apy,
+  chartData,
+  isSubscribed,
+  onPrimaryAction,
+  onExitAction,
+  virtualReturnPct,
+  cyclesTotal,
+  cyclesScoreable,
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const numericApy = parseFloat(apy);
   const displayApy = !isNaN(numericApy) ? numericApy.toFixed(2) : '0.00';
 
+  const hasVirtual = virtualReturnPct !== undefined && virtualReturnPct !== null;
+  const numericVirtual = hasVirtual ? Number(virtualReturnPct) : 0;
+  const displayVirtual = numericVirtual.toFixed(2);
+  const totalCycles = Number(cyclesTotal ?? 0);
+  const scoredCycles = Number(cyclesScoreable ?? 0);
+  const insufficientVirtualData = hasVirtual && scoredCycles === 0;
+
   const hasChartData = chartData && chartData.length > 0;
-  const chartColor = numericApy >= 0 ? '#4ade80' : '#f87171';
+  const headlineForChart = hasVirtual ? numericVirtual : numericApy;
+  const chartColorBasis = insufficientVirtualData ? numericApy : headlineForChart;
+  const chartColor = chartColorBasis >= 0 ? '#4ade80' : '#f87171';
 
   const sparklineData = hasChartData ? {
     labels: chartData.map(d => d.date),
@@ -84,10 +105,12 @@ function CopyCard({ id, name, creator, apy, chartData, isSubscribed, onPrimaryAc
           {name}
         </h3>
 
-        {/* APY display with sparkline */}
+        {/* Headline metric with sparkline */}
         <div className="bg-surface-primary border border-border rounded-lg p-4 overflow-hidden">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-xs text-content-muted uppercase tracking-wider">{t('copyExplore.sevenDayApy')}</div>
+            <div className="text-xs text-content-muted uppercase tracking-wider">
+              {hasVirtual ? t('copyExplore.strategyReturn') : t('copyExplore.sevenDayApy')}
+            </div>
             <button
               onClick={handleViewDetails}
               className="text-xs text-content-accent hover:text-accent-hover uppercase tracking-wider transition-colors"
@@ -96,8 +119,14 @@ function CopyCard({ id, name, creator, apy, chartData, isSubscribed, onPrimaryAc
             </button>
           </div>
           <div className="flex items-end justify-between gap-3">
-            <div className={`text-xl font-black font-mono leading-none flex-shrink-0 ${numericApy >= 0 ? 'text-success' : 'text-danger'}`}>
-              {numericApy >= 0 ? '+' : ''}{displayApy}%
+            <div className={`text-xl font-black font-mono leading-none flex-shrink-0 ${
+              insufficientVirtualData
+                ? 'text-content-muted'
+                : headlineForChart >= 0 ? 'text-success' : 'text-danger'
+            }`}>
+              {insufficientVirtualData
+                ? '—'
+                : `${headlineForChart >= 0 ? '+' : ''}${hasVirtual ? displayVirtual : displayApy}%`}
             </div>
             {hasChartData && (
               <div className="w-24 h-10 overflow-hidden flex-shrink-0">
@@ -105,6 +134,13 @@ function CopyCard({ id, name, creator, apy, chartData, isSubscribed, onPrimaryAc
               </div>
             )}
           </div>
+          {hasVirtual && (
+            <div className="text-[10px] text-content-muted mt-2">
+              {totalCycles === 0
+                ? t('copyExplore.noCyclesYet')
+                : t('copyExplore.cyclesCoverage', { scoreable: scoredCycles, total: totalCycles })}
+            </div>
+          )}
         </div>
       </div>
 
