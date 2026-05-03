@@ -5,36 +5,10 @@ import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../utils/api';
 import { ethers } from 'ethers';
 import logoImage from '../assets/logo.png';
+import metamaskLogo from '../assets/metamask.svg';
 import { useAuth } from '../context/AuthContext';
 import { FullScreenLoader } from '../components/FullScreenLoader';
 import AnimatedBackground from '../components/AnimatedBackground';
-
-function MetaMaskIcon({ className = 'w-6 h-6' }) {
-  return (
-    <svg className={className} viewBox="0 0 318 318" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M274 35 175 109l18-43 81-31z" fill="#E17726"/>
-      <path d="M44 35l99 75-17-44L44 35z" fill="#E27625"/>
-      <path d="M238 207l-26 40 56 16 17-55-47-1z" fill="#E27625"/>
-      <path d="M34 208l16 55 57-16-26-40-47 1z" fill="#E27625"/>
-      <path d="M104 138l-16 24 56 3-2-61-38 34z" fill="#E27625"/>
-      <path d="M215 138l-39-35-1 62 56-3-16-24z" fill="#E27625"/>
-      <path d="M107 247l34-16-30-23-4 39z" fill="#E27625"/>
-      <path d="M178 231l34 16-4-39-30 23z" fill="#E27625"/>
-      <path d="M212 247l-34-16 3 22-1 9 32-15z" fill="#D7C1B3"/>
-      <path d="M107 247l32 15-1-9 3-22-34 16z" fill="#D7C1B3"/>
-      <path d="M139 192l-28-8 20-9 8 17z" fill="#233447"/>
-      <path d="M180 192l8-17 20 9-28 8z" fill="#233447"/>
-      <path d="M107 247l5-41-31 1 26 40z" fill="#CD6116"/>
-      <path d="M207 206l5 41 26-40-31-1z" fill="#CD6116"/>
-      <path d="M231 162l-56 3 5 27 8-17 20 9 23-22z" fill="#CD6116"/>
-      <path d="M111 184l20-9 8 17 5-27-56-3 23 22z" fill="#CD6116"/>
-      <path d="M180 192l-7 35 5 4 29-23 1-24-28 8z" fill="#F6851B"/>
-      <path d="M111 184l1 24 29 23 5-4-7-35-28-8z" fill="#F6851B"/>
-      <path d="M180 262l1-9-3-2h-37l-3 2 1 9-31-15 11 9 22 16h38l22-16 11-9-32 15z" fill="#C0AD9E"/>
-      <path d="M178 231l-5-4h-27l-5 4-3 22 3-2h37l3 2-3-22z" fill="#161616"/>
-    </svg>
-  );
-}
 
 function LoginPage() {
   const [totp, setTotp] = useState('');
@@ -191,8 +165,8 @@ function LoginPage() {
                          active:scale-[0.98] transition-all duration-200
                          disabled:opacity-50 disabled:pointer-events-none"
             >
-              <MetaMaskIcon className="w-6 h-6 flex-shrink-0" />
               <span>{t('auth.connectWallet')}</span>
+              <img src={metamaskLogo} alt="MetaMask" className="w-6 h-6 flex-shrink-0" />
             </button>
           ) : (
             <form onSubmit={handle2FASubmit} className="space-y-5">
