@@ -10,7 +10,7 @@ export async function apiFetch(url, options = {}) {
       credentials: 'include',
     });
 
-    const isAuthEndpoint = ['/login', '/register', '/auth/refresh', '/auth/wallet-login', '/auth/wallet-nonce'].includes(url);
+    const isAuthEndpoint = ['/auth/refresh', '/auth/wallet-login', '/auth/wallet-nonce'].includes(url);
     if (response.status === 401 && !isAuthEndpoint) {
       // Try refresh
       const refreshTkn = localStorage.getItem('refreshToken');

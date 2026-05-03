@@ -4,7 +4,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 // Páginas
 import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
 import Verify2FAPage from './pages/Verify2FAPage';
 import Setup2FAPage from './pages/Setup2FAPage';
 import LinkWalletPage from './pages/LinkWalletPage';
@@ -37,7 +36,6 @@ function App() {
       <Routes>
         {/* Rotas Públicas */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-2fa" element={<Verify2FAPage />} />
 
         {/* Rotas Protegidas */}
