@@ -17,7 +17,6 @@ function CopyCard({
   id,
   name,
   creator,
-  apy,
   chartData,
   isSubscribed,
   onPrimaryAction,
@@ -28,25 +27,22 @@ function CopyCard({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const numericApy = parseFloat(apy);
-  const displayApy = !isNaN(numericApy) ? numericApy.toFixed(2) : '0.00';
 
-  const hasVirtual = virtualReturnPct !== undefined && virtualReturnPct !== null;
-  const numericVirtual = hasVirtual ? Number(virtualReturnPct) : 0;
-  const displayVirtual = numericVirtual.toFixed(2);
   const totalCycles = Number(cyclesTotal ?? 0);
   const scoredCycles = Number(cyclesScoreable ?? 0);
-  const insufficientVirtualData = hasVirtual && scoredCycles === 0;
+  const numericVirtual = virtualReturnPct != null ? Number(virtualReturnPct) : null;
+  const hasReturn = numericVirtual !== null && scoredCycles > 0;
+  const displayVirtual = hasReturn ? numericVirtual.toFixed(2) : null;
 
   const hasChartData = chartData && chartData.length > 0;
-  const headlineForChart = hasVirtual ? numericVirtual : numericApy;
-  const chartColorBasis = insufficientVirtualData ? numericApy : headlineForChart;
-  const chartColor = chartColorBasis >= 0 ? '#4ade80' : '#f87171';
+  const chartColor = hasReturn
+    ? (numericVirtual >= 0 ? '#4ade80' : '#f87171')
+    : '#9ca3af';
 
   const sparklineData = hasChartData ? {
     labels: chartData.map(d => d.date),
     datasets: [{
-      data: chartData.map(d => d.pnl),
+      data: chartData.map(d => Number(d.return_pct ?? 0)),
       borderColor: chartColor,
       backgroundColor: `${chartColor}20`,
       fill: true,
@@ -109,7 +105,7 @@ function CopyCard({
         <div className="bg-surface-primary border border-border rounded-lg p-4 overflow-hidden">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs text-content-muted uppercase tracking-wider">
-              {hasVirtual ? t('copyExplore.strategyReturn') : t('copyExplore.sevenDayApy')}
+              {t('copyExplore.strategyReturn')}
             </div>
             <button
               onClick={handleViewDetails}
@@ -120,13 +116,13 @@ function CopyCard({
           </div>
           <div className="flex items-end justify-between gap-3">
             <div className={`text-xl font-black font-mono leading-none flex-shrink-0 ${
-              insufficientVirtualData
+              !hasReturn
                 ? 'text-content-muted'
-                : headlineForChart >= 0 ? 'text-success' : 'text-danger'
+                : numericVirtual >= 0 ? 'text-success' : 'text-danger'
             }`}>
-              {insufficientVirtualData
-                ? '—'
-                : `${headlineForChart >= 0 ? '+' : ''}${hasVirtual ? displayVirtual : displayApy}%`}
+              {hasReturn
+                ? `${numericVirtual >= 0 ? '+' : ''}${displayVirtual}%`
+                : '—'}
             </div>
             {hasChartData && (
               <div className="w-24 h-10 overflow-hidden flex-shrink-0">
@@ -134,13 +130,11 @@ function CopyCard({
               </div>
             )}
           </div>
-          {hasVirtual && (
-            <div className="text-[10px] text-content-muted mt-2">
-              {totalCycles === 0
-                ? t('copyExplore.noCyclesYet')
-                : t('copyExplore.cyclesCoverage', { scoreable: scoredCycles, total: totalCycles })}
-            </div>
-          )}
+          <div className="text-[10px] text-content-muted mt-2">
+            {totalCycles === 0
+              ? t('copyExplore.noCyclesYet')
+              : t('copyExplore.cyclesCoverage', { scoreable: scoredCycles, total: totalCycles })}
+          </div>
         </div>
       </div>
 

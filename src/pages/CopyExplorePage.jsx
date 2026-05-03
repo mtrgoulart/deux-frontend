@@ -154,7 +154,6 @@ function ExplorePage() {
                                                 id={item.id}
                                                 name={item.name}
                                                 creator={item.creator}
-                                                apy={item.apy}
                                                 virtualReturnPct={item.virtual_return_pct}
                                                 cyclesTotal={item.cycles_total}
                                                 cyclesScoreable={item.cycles_scoreable}
