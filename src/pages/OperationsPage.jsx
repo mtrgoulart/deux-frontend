@@ -22,10 +22,6 @@ function OperationsPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const recordsPerPage = 25;
 
-    // Metrics pagination state
-    const [metricsPage, setMetricsPage] = useState(1);
-    const metricsPerPage = 6;
-
     // Fetch instances (strategies)
     const { data: instances = [] } = useQuery({
         queryKey: ['instances'],
@@ -39,7 +35,7 @@ function OperationsPage() {
     });
 
     // Fetch operations data
-    const { data: operations = [], isLoading: operationsLoading, isFetching: operationsFetching, refetch: refetchOperations } = useQuery({
+    const { data: operations = [], isLoading, isFetching: operationsFetching, refetch: refetchOperations } = useQuery({
         queryKey: ['dashboard-operations'],
         queryFn: async () => {
             const response = await apiFetch('/dashboard/operations');
@@ -54,31 +50,12 @@ function OperationsPage() {
         refetchOnWindowFocus: false,
     });
 
-    // Fetch metrics data (APY, P&L by symbol)
-    const { data: metrics = [], isLoading: metricsLoading } = useQuery({
-        queryKey: ['dashboard-metrics'],
-        queryFn: async () => {
-            const response = await apiFetch('/dashboard/metrics');
-            if (!response || !response.ok) {
-                throw new Error('Failed to fetch metrics');
-            }
-            const data = await response.json();
-            return data || [];
-        },
-        staleTime: 2 * 60 * 1000,
-        cacheTime: 10 * 60 * 1000,
-        refetchOnWindowFocus: false,
-    });
-
-    const isLoading = operationsLoading || metricsLoading;
-
-    // Extract unique symbols from operations and metrics
+    // Extract unique symbols from operations
     const uniqueSymbols = useMemo(() => {
         const symbolsSet = new Set();
         operations.forEach(op => symbolsSet.add(op.symbol));
-        metrics.forEach(m => symbolsSet.add(m.symbol));
         return Array.from(symbolsSet).sort();
-    }, [operations, metrics]);
+    }, [operations]);
 
     // Filter operations based on selections
     const filteredOperations = useMemo(() => {
@@ -167,28 +144,6 @@ function OperationsPage() {
         }
     };
 
-    // Filter metrics based on symbol selection
-    const filteredMetrics = useMemo(() => {
-        if (selectedSymbol === 'all') return metrics;
-        return metrics.filter(m => m.symbol === selectedSymbol);
-    }, [metrics, selectedSymbol]);
-
-    // Paginate metrics
-    const paginatedMetrics = useMemo(() => {
-        const start = (metricsPage - 1) * metricsPerPage;
-        return filteredMetrics.slice(start, start + metricsPerPage);
-    }, [filteredMetrics, metricsPage]);
-    const totalMetricsPages = Math.ceil(filteredMetrics.length / metricsPerPage);
-
-    // Reset metrics page when symbol filter changes
-    useEffect(() => {
-        setMetricsPage(1);
-    }, [selectedSymbol]);
-
-    // Calculate total P&L from filtered metrics
-    const totalProfitLoss = filteredMetrics.reduce((sum, m) => sum + (m.profit_loss || 0), 0);
-    const totalOperations = filteredOperations.length;
-
     if (isLoading) {
         return (
             <TradingBarsLoader
@@ -202,84 +157,12 @@ function OperationsPage() {
         <div className="min-h-screen bg-surface-primary">
             {/* Header */}
             <div className="bg-surface border border-border rounded-lg px-6 py-5 mb-6">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-bold uppercase tracking-wide bg-gradient-to-r from-teal-400 to-teal-600 bg-clip-text text-transparent">
-                        {t('operations.title')}
-                    </h1>
-                    <div className="flex items-center gap-3 bg-surface-primary rounded-lg px-5 py-2.5 border border-border-subtle">
-                        <span className="text-xs text-content-muted uppercase tracking-wider">{t('operations.totalPnl')}</span>
-                        <span className={`text-2xl font-bold font-mono ${totalProfitLoss >= 0 ? 'text-success' : 'text-danger'}`}>
-                            {totalProfitLoss >= 0 ? '+' : ''}{totalProfitLoss.toFixed(2)} USDT
-                        </span>
-                    </div>
-                </div>
+                <h1 className="text-2xl font-bold uppercase tracking-wide bg-gradient-to-r from-teal-400 to-teal-600 bg-clip-text text-transparent">
+                    {t('operations.title')}
+                </h1>
             </div>
 
             <div className="space-y-6">
-                {/* APY Metrics Cards */}
-                {filteredMetrics.length > 0 && (
-                    <div>
-                        <h2 className="text-lg font-semibold text-content-accent uppercase tracking-wider mb-4">
-                            {t('operations.performanceBySymbol')}
-                        </h2>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {paginatedMetrics.map((metric) => (
-                                <div key={metric.symbol} className="bg-surface border border-border rounded-lg p-4 hover:border-border-accent/30 hover:-translate-y-1 hover:shadow-lg hover:shadow-accent/5 transition-all duration-200">
-                                    {/* Symbol header */}
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h3 className="text-base font-bold text-content-accent font-mono tracking-wider">{metric.symbol}</h3>
-                                        <div className="w-2 h-2 bg-accent rounded-full animate-pulse"></div>
-                                    </div>
-
-                                    {/* APY display */}
-                                    <div className="mb-3">
-                                        <div className="text-xs text-content-muted uppercase tracking-wider mb-1">{t('operations.annualYield')}</div>
-                                        <div className={`text-2xl font-black font-mono ${metric.apy >= 0 ? 'text-success' : 'text-danger'}`}>
-                                            {metric.apy >= 0 ? '+' : ''}{metric.apy}%
-                                        </div>
-                                    </div>
-
-                                    {/* Stats grid */}
-                                    <div className="grid grid-cols-2 gap-2 text-sm">
-                                        <div className="bg-surface-raised/50 rounded p-2 border border-border-subtle">
-                                            <div className="text-content-muted text-xs uppercase">{t('operations.pnl')}</div>
-                                            <div className={`font-bold font-mono ${metric.profit_loss >= 0 ? 'text-success' : 'text-danger'}`}>
-                                                {metric.profit_loss >= 0 ? '+' : ''}{metric.profit_loss.toFixed(2)}
-                                            </div>
-                                        </div>
-                                        <div className="bg-surface-raised/50 rounded p-2 border border-border-subtle">
-                                            <div className="text-content-muted text-xs uppercase">{t('operations.returnPercent')}</div>
-                                            <div className={`font-bold font-mono ${metric.profit_loss_percentage >= 0 ? 'text-success' : 'text-danger'}`}>
-                                                {metric.profit_loss_percentage >= 0 ? '+' : ''}{metric.profit_loss_percentage}%
-                                            </div>
-                                        </div>
-                                        <div className="bg-surface-raised/50 rounded p-2 border border-border-subtle">
-                                            <div className="text-content-muted text-xs uppercase">{t('operations.operationsCount')}</div>
-                                            <div className="text-content-primary font-bold font-mono">{metric.total_operations}</div>
-                                        </div>
-                                        <div className="bg-surface-raised/50 rounded p-2 border border-border-subtle">
-                                            <div className="text-content-muted text-xs uppercase">{t('operations.volume')}</div>
-                                            <div className="text-content-primary font-bold font-mono">{metric.realized_volume.toFixed(4)}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Metrics Pagination */}
-                        <div className="mt-4">
-                            <Pagination
-                                currentPage={metricsPage}
-                                totalPages={totalMetricsPages}
-                                onPageChange={setMetricsPage}
-                                itemsPerPage={metricsPerPage}
-                                totalItems={filteredMetrics.length}
-                            />
-                        </div>
-                    </div>
-                )}
-
                 {/* Filters */}
                 <div>
                     <h2 className="text-lg font-semibold text-content-accent uppercase tracking-wider mb-4">
@@ -418,7 +301,7 @@ function OperationsPage() {
                                         <th className="px-6 py-4 text-center text-xs font-semibold text-content-muted uppercase tracking-wider">{t('operations.status')}</th>
                                     </tr>
                                 </thead>
-                                <tbody className={`divide-y divide-border-subtle transition-opacity duration-300 ${operationsFetching && !operationsLoading ? 'opacity-40' : ''}`}>
+                                <tbody className={`divide-y divide-border-subtle transition-opacity duration-300 ${operationsFetching && !isLoading ? 'opacity-40' : ''}`}>
                                     {paginatedOperations.length === 0 ? (
                                         <tr>
                                             <td colSpan="7" className="px-6 py-12 text-center">

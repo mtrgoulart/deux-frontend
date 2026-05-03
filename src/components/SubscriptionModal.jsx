@@ -24,18 +24,6 @@ function formatNumber(value, digits = 4) {
     });
 }
 
-function PnlValue({ value }) {
-    const num = typeof value === 'number' ? value : parseFloat(value);
-    const safe = Number.isFinite(num) ? num : 0;
-    const positive = safe >= 0;
-    return (
-        <span className={`font-mono font-bold ${positive ? 'text-success' : 'text-danger'}`}>
-            {positive ? '+' : ''}{safe.toFixed(2)}
-            <span className="text-xs text-content-muted ml-1">USDT</span>
-        </span>
-    );
-}
-
 function PercentReturn({ value }) {
     const num = typeof value === 'number' ? value : parseFloat(value);
     const safe = Number.isFinite(num) ? num : 0;
@@ -185,7 +173,6 @@ function SharingCard({
     canApplyToAll,
 }) {
     const { t } = useTranslation();
-    const pnl = sharing.pnl || 0;
     const virtualPct = Number(sharing.virtual_return_pct ?? 0);
     const cyclesTotal = Number(sharing.cycles_total ?? 0);
     const cyclesScoreable = Number(sharing.cycles_scoreable ?? 0);
@@ -259,11 +246,6 @@ function SharingCard({
                 >
                     {t('copyExplore.detail')} →
                 </button>
-                {pnl !== 0 && (
-                    <span className="text-content-muted font-mono">
-                        {t('copyExplore.pnl')}: {pnl >= 0 ? '+' : ''}{typeof pnl === 'number' ? pnl.toFixed(2) : pnl} USDT
-                    </span>
-                )}
             </div>
 
             {/* Sizing controls (only when selected) */}
@@ -397,11 +379,6 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
     }, [isEditing, details, userSubscriptionsData, isLoadingSubscriptions, copyConfig.id]);
 
     const sharings = details?.sharings || [];
-
-    const totalPnl = useMemo(() => {
-        if (typeof details?.total_pnl === 'number') return details.total_pnl;
-        return sharings.reduce((acc, s) => acc + (Number(s.pnl) || 0), 0);
-    }, [details, sharings]);
 
     const virtualReturnPct = Number(details?.virtual_return_pct ?? 0);
     const cyclesScoreable = Number(details?.cycles_scoreable ?? 0);
@@ -552,12 +529,6 @@ function SubscriptionModal({ copyConfig, isEditing, onClose, onConfirm, isLoadin
                                         : t('copyExplore.cyclesCoverage', { scoreable: cyclesScoreable, total: cyclesTotal })}
                                 </span>
                             </div>
-                            {totalPnl !== 0 && (
-                                <div className="text-[11px] text-content-muted flex items-center gap-1.5">
-                                    <span className="uppercase tracking-wider">{t('copyExplore.totalPnl')}:</span>
-                                    <PnlValue value={totalPnl} />
-                                </div>
-                            )}
                         </div>
                     </div>
 
